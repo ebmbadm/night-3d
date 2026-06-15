@@ -16,11 +16,11 @@ renderer.toneMappingExposure = 1.12;
 stage.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x0b0028, 0.0022);
+scene.fog = new THREE.FogExp2(0xe9e2f5, 0.0022);
 
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-scene.environmentIntensity = 0.35;
+scene.environmentIntensity = 0.5;
 
 const camera = new THREE.PerspectiveCamera(42, stage.clientWidth / stage.clientHeight, 0.5, 600);
 camera.position.set(74, 42, -52);
@@ -96,6 +96,17 @@ const VIEWS = {
   gym:       mkView(52.2, 5.8, 4.6,   57.5,  5.2, 12.0),  // ОФП-зал (дальний край): рама, кардио, зеркало
   lounge:    mkView(38.5, 6.0, 10.6,  32.0,  5.0, 6.4),   // лаундж: диваны, пуфики, балкон
   office:    mkView(36.2, 5.7, 6.6,   36.2,  4.9, 1.6),   // кабинеты у южной стены
+  // — виды сверху на каждую зону: камера висит над зоной, слегка под углом —
+  padelTop:     mkView(29,   40, 15,   29,   0.5, 27),    // падел-холл сверху (4 панорамика + сингл)
+  badmintonTop: mkView(14,   25, 0,    14,   0.5, 8),     // бадминтон-холл сверху (4 корта)
+  ttTop:        mkView(38,   19, 3,    38,   0.5, 10.5),  // настольный теннис сверху (4 стола)
+  receptionTop: mkView(56,   15, 4,    56.5, 0.5, 10),    // ресепшн / турникеты сверху
+  shopTop:      mkView(38,   16, 8,    38,   0.5, 14),    // про-шоп сверху
+  lockerTop:    mkView(51,   20, 0,    51,   0.5, 7.8),   // обе раздевалки сверху
+  techTop:      mkView(6,    30, 16,   4,    0.5, 27),    // техзона (вент/серверная/склады) сверху
+  secondFloorTop: mkView(45, 30, -2,   45,   4.8, 8),     // весь второй этаж (антресоль) сверху
+  loungeTop:    mkView(32.6, 17, 7,    32.6, 4.8, 13.2),  // лаундж сверху
+  gymTop:       mkView(56,   17, 3,    56,   4.8, 9),     // ОФП-зал сверху
 };
 
 // окружение для точки обзора: крыша / антресоль
@@ -111,6 +122,11 @@ const VIEW_ENV = {
   storeinv:  { roof: 0, mezz: 1 }, store: { roof: 0, mezz: 1 },
   mezzanine: { roof: 0, mezz: 1 }, gym: { roof: 0, mezz: 1 },
   lounge:    { roof: 0, mezz: 1 }, office: { roof: 0, mezz: 1 },
+  // виды сверху: крыша снята; на земле антресоль скрыта, на втором этаже — показана
+  padelTop:     { roof: 0, mezz: 0 }, badmintonTop: { roof: 0, mezz: 0 }, ttTop: { roof: 0, mezz: 0 },
+  receptionTop: { roof: 0, mezz: 0 }, shopTop: { roof: 0, mezz: 0 }, lockerTop: { roof: 0, mezz: 0 },
+  techTop:      { roof: 0, mezz: 0 },
+  secondFloorTop: { roof: 0, mezz: 1 }, loungeTop: { roof: 0, mezz: 1 }, gymTop: { roof: 0, mezz: 1 },
 };
 
 let camTween = null;
@@ -224,7 +240,7 @@ window.addEventListener('keyup', (e) => {
 });
 
 /* ---------- свет ---------- */
-const hemi = new THREE.HemisphereLight(0x7c5cd6, 0x0b0028, 0.55);
+const hemi = new THREE.HemisphereLight(0x9d86e0, 0xcabfe4, 0.7);
 scene.add(hemi);
 
 const sun = new THREE.DirectionalLight(0xffe2f4, 1.7);
@@ -303,15 +319,18 @@ window.NightApp = {
     controls.update();
   },
   renderNow() { renderer.render(scene, camera); },
+  setRenderEnabled(b) { renderEnabled = !!b; },
   startWalk, stopWalk, setMove,
   toggleWalk() { walkActive ? stopWalk() : startWalk(); },
   isWalking() { return walkActive; },
 };
 
 /* ---------- цикл ---------- */
+let renderEnabled = true;
 const clock = new THREE.Clock();
 function tick() {
   requestAnimationFrame(tick);
+  if (!renderEnabled) { clock.getDelta(); return; }
   const dt = Math.min(clock.getDelta(), 0.05);
   // плавный подъём крыши
   state.roof += (state.roofTarget - state.roof) * Math.min(1, dt * 4.5);

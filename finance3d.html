@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Найт — 3D финансы</title>
+<link rel="stylesheet" href="ds/colors_and_type.css">
+<style>
+  html, body { margin:0; height:100%; overflow:hidden; background:transparent; }
+  body {
+    font-family:var(--font-text); color:var(--fg-1);
+    background:
+      radial-gradient(120% 95% at 82% -12%, rgba(194,57,159,0.09) 0%, rgba(108,48,214,0.06) 42%, rgba(244,241,250,0) 76%),
+      radial-gradient(95% 80% at 8% 112%, rgba(108,48,214,0.07) 0%, rgba(244,241,250,0) 64%),
+      #EDE7F6;
+  }
+  #stage{ position:absolute; inset:0; }
+  #stage canvas{ display:block; }
+  .grain{ position:absolute; inset:0; pointer-events:none; z-index:5; opacity:0.09; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E"); }
+  .legend{ position:absolute; top:16px; left:18px; z-index:10; display:flex; gap:18px; align-items:center;
+    font-family:var(--font-mono); font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#5B5470; }
+  .legend .it{ display:flex; align-items:center; gap:7px; }
+  .legend .sw{ width:13px; height:13px; border-radius:3px; }
+  .hint{ position:absolute; bottom:14px; right:18px; z-index:10; font-family:var(--font-mono); font-size:10px; letter-spacing:0.06em; color:var(--fg-3); text-transform:uppercase; pointer-events:none; }
+</style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="grain"></div>
+  <div class="legend">
+    <div class="it"><span class="sw" style="background:#6C30D6; box-shadow:0 0 12px rgba(108,48,214,0.5)"></span>Выручка</div>
+    <div class="it"><span class="sw" style="background:#C2399F; box-shadow:0 0 12px rgba(194,57,159,0.5)"></span>EBITDA</div>
+    <div class="it" style="color:#9A93AE">млн ₽ · год 1–10</div>
+  </div>
+  <div class="hint">ЛКМ — вращение · колесо — зум</div>
+
+  <script type="importmap">
+  { "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+    const DATA = {
+      opt: {
+        rev: [132.6,190.1,217.3,235.9,251.5,268.1,285.7,300.0,315.0,330.7],
+        eb:  [53.9,91.6,106.3,116.5,124.3,132.5,141.2,147.1,153.3,159.8],
+      },
+      avg: {
+        rev: [110.1,157.9,183.5,199.1,212.2,226.1,240.9,252.9,265.6,278.9],
+        eb:  [38.1,66.4,80.4,88.3,94.2,100.4,107.0,111.3,115.7,120.3],
+      },
+      pess: {
+        rev: [84.0,120.4,140.0,151.9,161.9,172.5,183.7,192.9,202.5,212.7],
+        eb:  [18.1,40.3,46.5,51.7,55.1,58.8,62.7,64.9,67.0,69.3],
+      },
+    };
+    const MAXV = 340;          // верх шкалы
+    const MAXH = 17;           // макс высота столбца в ед.
+    const YEARS = 10;
+    const STEP = 3.0;          // шаг по годам (X)
+    const BARW = 1.05;
+    const Z_REV = -0.85, Z_EB = 0.85;
+
+    const stage = document.getElementById('stage');
+    const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+    renderer.setSize(stage.clientWidth, stage.clientHeight);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    stage.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0xe9e2f5, 0.012);
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    scene.environmentIntensity = 0.5;
+
+    const camera = new THREE.PerspectiveCamera(40, stage.clientWidth/stage.clientHeight, 0.1, 200);
+    camera.position.set(26, 16, 24);
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 5.5, 0);
+    controls.enableDamping = true; controls.dampingFactor = 0.07;
+    controls.maxPolarAngle = Math.PI*0.49; controls.minDistance = 14; controls.maxDistance = 70;
+    controls.autoRotate = true; controls.autoRotateSpeed = 0.35;
+    renderer.domElement.addEventListener('pointerdown', ()=>{ controls.autoRotate=false; });
+
+    // свет
+    scene.add(new THREE.HemisphereLight(0x9d86e0, 0xcabfe4, 0.72));
+    const sun = new THREE.DirectionalLight(0xffe2f4, 1.5); sun.position.set(20,30,16); scene.add(sun);
+    const fill = new THREE.DirectionalLight(0x6a8cff, 0.4); fill.position.set(-22,16,-18); scene.add(fill);
+    const p1 = new THREE.PointLight(0xc2399f, 60, 60, 2); p1.position.set(0,12,10); scene.add(p1);
+    const p2 = new THREE.PointLight(0x6c30d6, 50, 60, 2); p2.position.set(-12,10,-8); scene.add(p2);
+
+    // пол-сетка
+    const grid = new THREE.GridHelper(60, 30, 0x9a78e0, 0xcdc2e6);
+    grid.position.y = 0.001; grid.material.opacity = 0.5; grid.material.transparent = true;
+    scene.add(grid);
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(80,80),
+      new THREE.MeshStandardMaterial({ color:0xe4ddf2, roughness:0.85, metalness:0.1 }));
+    floor.rotation.x = -Math.PI/2; floor.position.y = 0; scene.add(floor);
+
+    // линии шкалы Y
+    const scaleVals = [100,200,300];
+    const lineMat = new THREE.LineBasicMaterial({ color:0x5e3aa8, transparent:true, opacity:0.45 });
+    scaleVals.forEach(v=>{
+      const y = v/MAXV*MAXH;
+      const g = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(-STEP*5.2, y, -2.4), new THREE.Vector3(STEP*4.6, y, -2.4)]);
+      scene.add(new THREE.Line(g, lineMat));
+      scene.add(makeLabel(v+'', 0.62, '#b79cf0', -STEP*5.2-1.4, y, -2.4, true));
+    });
+
+    // текстовые спрайты
+    function makeLabel(text, size, color, x,y,z, mono){
+      const c = document.createElement('canvas'); const s=256; c.width=s; c.height=128;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = color; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.font = (mono?'600 ':'600 ')+'62px '+(mono?'JetBrains Mono, monospace':'Unbounded, sans-serif');
+      ctx.fillText(text, s/2, 64);
+      const tex = new THREE.CanvasTexture(c); tex.anisotropy=4;
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthWrite:false }));
+      sp.scale.set(size*2, size, 1); sp.position.set(x,y,z);
+      sp.userData.redraw = (t)=>{ ctx.clearRect(0,0,s,128); ctx.fillText(t, s/2, 64); tex.needsUpdate=true; };
+      return sp;
+    }
+
+    function barMat(hex, emis){
+      return new THREE.MeshStandardMaterial({ color:hex, emissive:hex, emissiveIntensity:emis, roughness:0.35, metalness:0.25 });
+    }
+    const geo = new THREE.BoxGeometry(BARW, 1, BARW);
+    geo.translate(0, 0.5, 0); // расти вверх от 0
+
+    const bars = []; // {mesh, label, kind, idx}
+    function addBar(kind, idx){
+      const isRev = kind==='rev';
+      const mat = barMat(isRev?0x6c30d6:0xc2399f, isRev?0.32:0.5);
+      const m = new THREE.Mesh(geo, mat);
+      const x = (idx - (YEARS-1)/2) * STEP;
+      m.position.set(x, 0, isRev?Z_REV:Z_EB);
+      m.scale.y = 0.001;
+      scene.add(m);
+      const lab = makeLabel('', 0.55, isRev?'#c9b6f7':'#f3a6e6', x, 0.5, isRev?Z_REV:Z_EB, true);
+      scene.add(lab);
+      bars.push({ mesh:m, label:lab, kind, idx, target:0, cur:0 });
+    }
+    for(let i=0;i<YEARS;i++){ addBar('rev', i); addBar('eb', i); }
+
+    // подписи годов
+    for(let i=0;i<YEARS;i++){
+      const x = (i-(YEARS-1)/2)*STEP;
+      scene.add(makeLabel('Г'+(i+1), 0.6, '#8f7bc4', x, 0.35, 2.7, true));
+    }
+
+    let scenario = 'avg';
+    function applyScenario(name, animate=true){
+      scenario = DATA[name] ? name : 'avg';
+      const d = DATA[scenario];
+      bars.forEach(b=>{
+        const v = (b.kind==='rev'? d.rev : d.eb)[b.idx];
+        b.target = v/MAXV*MAXH;
+        b.valTarget = v;
+        if(!animate){ b.cur=b.target; b.mesh.scale.y=Math.max(0.001,b.target); positionLabel(b, v); }
+      });
+    }
+    function positionLabel(b, v){
+      b.label.position.y = b.mesh.scale.y + 0.55;
+      b.label.userData.redraw(Math.round(v)+'');
+    }
+
+    applyScenario('avg', false);
+
+    window.FinanceChart = {
+      setScenario(name){ applyScenario(name, true); },
+      play(){ bars.forEach(b=>{ b.cur=0; b.mesh.scale.y=0.001; }); },
+    };
+    window.__dbg = () => bars.slice(0,2).map(b=>({kind:b.kind, idx:b.idx, target:b.target, cur:b.cur, sy:b.mesh.scale.y}));
+    window.addEventListener('message', (e)=>{
+      const m=e.data; if(!m||m.ns!=='finance') return;
+      if(m.cmd==='setScenario') applyScenario(m.value, true);
+      else if(m.cmd==='play') window.FinanceChart.play();
+      else if(m.cmd==='setActive') finEnabled = (m.value !== false);
+    });
+    try{ window.parent && window.parent.postMessage({ns:'finance-evt',type:'ready'},'*'); }catch(e){}
+
+    const clock = new THREE.Clock();
+    let finEnabled = true;
+    window.__frames = 0; window.__tickErr = null;
+    function tick(){
+      requestAnimationFrame(tick);
+      if(!finEnabled){ clock.getDelta(); return; }
+      window.__frames++;
+      try {
+      const dt = Math.min(clock.getDelta(),0.05);
+      bars.forEach(b=>{
+        b.cur += (b.target-b.cur)*Math.min(1,dt*4.2);
+        b.mesh.scale.y = Math.max(0.001,b.cur);
+        const shownV = (b.cur/MAXH)*MAXV;
+        b.label.position.y = b.mesh.scale.y + 0.55;
+        b.label.userData.redraw(Math.round(shownV)+'');
+      });
+      controls.update();
+      renderer.render(scene,camera);
+      } catch(e){ window.__tickErr = e.message + ' | ' + (e.stack||'').split('\n')[1]; }
+    }
+    tick();
+    window.addEventListener('resize', ()=>{
+      camera.aspect = stage.clientWidth/stage.clientHeight; camera.updateProjectionMatrix();
+      renderer.setSize(stage.clientWidth, stage.clientHeight);
+    });
+  </script>
+</body>
+</html>

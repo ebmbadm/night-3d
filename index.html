@@ -1,269 +1,987 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Найт — 3D-прототип центра ракеточных видов спорта</title>
-<link rel="stylesheet" href="ds/colors_and_type.css">
-<style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--deep-violet); }
-  body {
-    font-family: var(--font-text);
-    color: var(--fg-1);
-    background:
-      radial-gradient(110% 90% at 78% -10%, rgba(221,88,197,0.22) 0%, rgba(114,56,230,0.14) 38%, rgba(11,0,40,0) 72%),
-      radial-gradient(90% 70% at 8% 108%, rgba(114,56,230,0.18) 0%, rgba(11,0,40,0) 60%),
-      var(--deep-violet);
-  }
-  #stage { position: absolute; inset: 0; }
-  #stage canvas { display: block; }
-
-  /* плёночный grain поверх рендера */
-  .grain {
-    position: absolute; inset: 0; pointer-events: none; z-index: 5;
-    opacity: 0.11; mix-blend-mode: overlay;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E");
-  }
-
-  .chrome { position: absolute; z-index: 10; }
-
-  .controls { top: 28px; right: 28px; display: flex; gap: 10px; align-items: center; }
-  .btn-roof {
-    display: flex; align-items: center; gap: 10px;
-    font-family: var(--font-text); font-size: 12.5px; font-weight: 500; color: var(--fg-1);
-    background: var(--glass-bg); border: 1px solid var(--glass-border);
-    backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
-    border-radius: var(--radius-pill); padding: 11px 18px; cursor: pointer;
-    transition: filter 180ms cubic-bezier(0.2, 0.8, 0.2, 1), transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
-  }
-  .btn-roof:hover { filter: brightness(1.12); transform: translateY(-1px); }
-  .btn-roof:active { transform: scale(0.97); }
-  .btn-roof .dot {
-    width: 9px; height: 9px; border-radius: 50%;
-    background: var(--night-magenta); box-shadow: var(--glow-magenta);
-    transition: background 180ms, box-shadow 180ms;
-  }
-  .btn-roof[aria-pressed="false"] .dot { background: rgba(255,255,255,0.25); box-shadow: none; }
-
-  .hint {
-    bottom: 24px; right: 28px;
-    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em;
-    color: var(--fg-3); text-align: right; text-transform: uppercase; white-space: nowrap;
-  }
-
-  /* ---- крестик прицела в режиме прогулки ---- */
-  .crosshair {
-    left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 8;
-    width: 22px; height: 22px; pointer-events: none; opacity: 0.85;
-  }
-  .crosshair::before, .crosshair::after {
-    content: ""; position: absolute; background: rgba(255,255,255,0.9);
-    box-shadow: 0 0 6px rgba(221,88,197,0.9);
-  }
-  .crosshair::before { left: 50%; top: 3px; width: 1.5px; height: 16px; transform: translateX(-50%); }
-  .crosshair::after  { top: 50%; left: 3px; height: 1.5px; width: 16px; transform: translateY(-50%); }
-
-  /* ---- нижняя панель движения (Minecraft-style) ---- */
-  .walkpad {
-    left: 50%; bottom: 26px; transform: translateX(-50%);
-    display: flex; align-items: flex-end; gap: 14px;
-    padding: 12px 14px;
-    background: var(--glass-bg); border: 1px solid var(--glass-border);
-    backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
-    border-radius: var(--radius-lg);
-    box-shadow: 0 0 40px rgba(221,88,197,0.18);
-  }
-  .walkpad[hidden] { display: none; }
-  .wp-group { display: flex; flex-direction: column; align-items: center; gap: 7px; }
-  .wp-cap {
-    font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.1em;
-    color: var(--fg-3); text-transform: uppercase;
-  }
-  .wp-btn {
-    display: flex; align-items: center; justify-content: center;
-    width: 46px; height: 40px; font-size: 17px; line-height: 1;
-    font-family: var(--font-text); color: var(--fg-1);
-    background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
-    border-radius: var(--radius-md); cursor: pointer; user-select: none;
-    -webkit-user-select: none; touch-action: none;
-    transition: filter 120ms cubic-bezier(0.2,0.8,0.2,1), transform 120ms cubic-bezier(0.2,0.8,0.2,1), background 120ms;
-  }
-  .wp-btn:hover { filter: brightness(1.18); }
-  .wp-btn.act, .wp-btn:active {
-    background: rgba(221,88,197,0.28); border-color: var(--night-magenta);
-    box-shadow: var(--glow-magenta); transform: translateY(1px);
-  }
-  /* d-pad движения: крест 3×2 */
-  .wp-move { display: grid; grid-template-columns: repeat(3, 46px); grid-template-rows: 40px 40px; gap: 6px; }
-  .wp-move .wp-cap { grid-column: 1 / -1; order: -1; }
-  .wp-move [data-move="f"] { grid-column: 2; grid-row: 1; }
-  .wp-move [data-move="l"] { grid-column: 1; grid-row: 2; }
-  .wp-move [data-move="b"] { grid-column: 2; grid-row: 2; }
-  .wp-move [data-move="r"] { grid-column: 3; grid-row: 2; }
-  .wp-stack { display: flex; gap: 6px; }
-  .wp-sep { width: 1px; align-self: stretch; background: rgba(255,255,255,0.1); margin: 4px 2px; }
-  .wp-exit {
-    width: auto; padding: 0 16px; font-size: 12.5px; font-weight: 500;
-  }
-
-  #tweaks-root { position: absolute; z-index: 20; }
-
-  /* ---------- мобильная адаптация ---------- */
-  @media (max-width: 680px) {
-    /* верхние кнопки режимов: компактнее, переносятся, не вылезают за край */
-    .controls {
-      top: max(12px, env(safe-area-inset-top));
-      right: 10px; left: 10px;
-      gap: 8px; flex-wrap: wrap; justify-content: flex-end;
-    }
-    .btn-roof { padding: 9px 12px; font-size: 11.5px; gap: 7px; }
-    .btn-roof .dot { width: 8px; height: 8px; }
-
-    /* подсказки про мышь не нужны на тач-экране */
-    .hint { display: none; }
-
-    /* нижняя панель прогулки — масштабируем под узкий экран */
-    .walkpad {
-      bottom: max(12px, env(safe-area-inset-bottom));
-      gap: 8px; padding: 9px 10px;
-      transform: translateX(-50%) scale(0.86); transform-origin: bottom center;
-    }
-
-    /* панель твиков (точки обзора/атмосфера) — уже и ниже по высоте */
-    .twk-panel {
-      width: min(72vw, 250px) !important;
-      max-height: 46vh !important;
-      right: 10px !important; bottom: 10px !important;
-      font-size: 11px !important;
-    }
-  }
-
-  @media (max-width: 420px) {
-    .walkpad { transform: translateX(-50%) scale(0.76); }
-    .twk-panel { width: min(80vw, 230px) !important; max-height: 42vh !important; }
-  }
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="./support.js"></script>
 </head>
 <body>
-  <div id="stage"></div>
-  <div class="grain"></div>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="ds/colors_and_type.css">
+<style>
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100%; }
+  body{ background:#F4F1FA; overflow:hidden; }
+  ::-webkit-scrollbar{ width:9px; height:9px; }
+  ::-webkit-scrollbar-thumb{ background:rgba(108,48,214,0.35); border-radius:9px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+  @keyframes nfade{ from{ opacity:0; transform:translateY(14px); } to{ opacity:1; transform:translateY(0); } }
+  @keyframes ngrow{ from{ transform:scaleX(0); } to{ transform:scaleX(1); } }
+  @keyframes nblink{ 0%,100%{ opacity:1; } 50%{ opacity:0.25; } }
+  @keyframes ntick{ from{ opacity:0; transform:translateY(-4px); } to{ opacity:1; transform:translateY(0); } }
+  @keyframes nb-rot{ 0%,18%{ transform:rotate(0deg); } 50%,68%{ transform:rotate(-90deg); } 100%{ transform:rotate(0deg); } }
 
-  <div class="chrome controls">
-    <button class="btn-roof" id="walkBtn" type="button" aria-pressed="false">
-      <span class="dot"></span><span id="walkLabel">Прогулка</span>
-    </button>
-    <button class="btn-roof" id="mezzBtn" type="button" aria-pressed="true">
-      <span class="dot"></span><span id="mezzLabel">Антресоль: вкл</span>
-    </button>
-    <button class="btn-roof" id="roofBtn" type="button" aria-pressed="true">
-      <span class="dot"></span><span id="roofLabel">Крыша: вкл</span>
-    </button>
-  </div>
-
-  <div class="chrome hint">ЛКМ — вращение · колесо — зум · ПКМ — панорама</div>
-
-  <div class="chrome crosshair" id="crosshair" hidden></div>
-
-  <div class="chrome walkpad" id="walkpad" hidden>
-    <div class="wp-group wp-move">
-      <span class="wp-cap">Шаг</span>
-      <button class="wp-btn" type="button" data-move="f" aria-label="Вперёд">▲</button>
-      <button class="wp-btn" type="button" data-move="l" aria-label="Шаг влево">◀</button>
-      <button class="wp-btn" type="button" data-move="b" aria-label="Назад">▼</button>
-      <button class="wp-btn" type="button" data-move="r" aria-label="Шаг вправо">▶</button>
-    </div>
-    <div class="wp-sep"></div>
-    <div class="wp-group">
-      <span class="wp-cap">Обзор</span>
-      <div class="wp-stack">
-        <button class="wp-btn" type="button" data-move="tl" aria-label="Повернуть влево">↺</button>
-        <button class="wp-btn" type="button" data-move="tr" aria-label="Повернуть вправо">↻</button>
-      </div>
-    </div>
-    <div class="wp-sep"></div>
-    <div class="wp-group">
-      <span class="wp-cap">Высота</span>
-      <div class="wp-stack">
-        <button class="wp-btn" type="button" data-move="up" aria-label="Выше">⤒</button>
-        <button class="wp-btn" type="button" data-move="down" aria-label="Ниже">⤓</button>
-      </div>
-    </div>
-    <div class="wp-sep"></div>
-    <div class="wp-group">
-      <span class="wp-cap">WASD · мышь</span>
-      <button class="wp-btn wp-exit" type="button" id="walkExit">Выйти</button>
-    </div>
-  </div>
-
-  <div id="tweaks-root"></div>
-
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  /* ---- экран «поверните устройство» (только узкие тач-экраны в портрете) ---- */
+  #nb-rotate{ display:none; }
+  @media (orientation:portrait) and (pointer:coarse) and (max-aspect-ratio:3/5){
+    #nb-rotate{
+      position:fixed; inset:0; z-index:99999; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; gap:26px; text-align:center;
+      padding:calc(40px + env(safe-area-inset-top)) 30px calc(40px + env(safe-area-inset-bottom));
+      background:
+        radial-gradient(120% 60% at 50% -6%, rgba(194,57,159,0.20) 0%, rgba(244,241,250,0) 58%),
+        radial-gradient(90% 60% at 50% 108%, rgba(108,48,214,0.18) 0%, rgba(244,241,250,0) 60%),
+        #F4F1FA;
     }
+    /* спрятать дек под шторкой, чтобы крошечный 16:9 не отвлекал */
+    #nb-scaler{ filter:blur(2px); }
   }
-  </script>
-  <script type="module" src="js/night-main.js"></script>
+  .nb-rot-mark{ font-family:'Bebas Neue','Bebas Neue Cyrillic',sans-serif; font-size:62px; line-height:0.82; letter-spacing:0.02em; color:#150E2B; }
+  .nb-rot-mark span{ color:#C2399F; }
+  .nb-rot-icon{ width:74px; height:74px; color:#C2399F; animation:nb-rot 3.2s ease-in-out infinite; }
+  .nb-rot-title{ font-family:'Unbounded',sans-serif; font-weight:500; font-size:19px; color:#150E2B; }
+  .nb-rot-sub{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(21,14,43,0.55); line-height:1.7; max-width:300px; }
+</style>
+</helmet>
 
-  <script>
-    (function () {
-      const btn = document.getElementById('roofBtn');
-      const label = document.getElementById('roofLabel');
-      let on = true;
-      function setRoofUI(v) { on = v; btn.setAttribute('aria-pressed', String(on)); label.textContent = on ? 'Крыша: вкл' : 'Крыша: выкл'; }
-      btn.addEventListener('click', function () {
-        on = !on;
-        if (window.NightApp) window.NightApp.setRoof(on);
-        setRoofUI(on);
-      });
-      const mbtn = document.getElementById('mezzBtn');
-      const mlabel = document.getElementById('mezzLabel');
-      let mon = true;
-      function setMezzUI(v) { mon = v; mbtn.setAttribute('aria-pressed', String(mon)); mlabel.textContent = mon ? 'Антресоль: вкл' : 'Антресоль: выкл'; }
-      mbtn.addEventListener('click', function () {
-        mon = !mon;
-        if (window.NightApp) window.NightApp.setMezz(mon);
-        setMezzUI(mon);
-      });
-      // синхронизация подписей при авто-переключении из точек обзора
-      document.addEventListener('night:roof', function (e) { setRoofUI(!!e.detail); });
-      document.addEventListener('night:mezz', function (e) { setMezzUI(!!e.detail); });
-      // свободная прогулка от первого лица (как в Minecraft)
-      const wbtn = document.getElementById('walkBtn');
-      const wlabel = document.getElementById('walkLabel');
-      const walkpad = document.getElementById('walkpad');
-      const crosshair = document.getElementById('crosshair');
-      const hint = document.querySelector('.hint');
-      function setWalkUI(on) {
-        wbtn.setAttribute('aria-pressed', String(on));
-        wlabel.textContent = on ? 'Выйти · прогулка' : 'Прогулка';
-        walkpad.hidden = !on;
-        crosshair.hidden = !on;
-        if (hint) hint.style.opacity = on ? '0' : '';
+<div id="nb-scaler" style="position:fixed; inset:0; background:radial-gradient(120% 80% at 78% -12%, rgba(194,57,159,0.16) 0%, rgba(108,48,214,0.10) 40%, rgba(228,222,239,0) 72%), radial-gradient(90% 70% at 8% 112%, rgba(108,48,214,0.14) 0%, rgba(228,222,239,0) 60%), #E4DEEF; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+<div id="nb-app" style="display:flex; width:1440px; height:810px; flex:0 0 auto; transform-origin:center center; font-family:'Unbounded',sans-serif; background:#F4F1FA; color:#150E2B; overflow:hidden; box-shadow:0 40px 130px rgba(21,14,43,0.16);">
+
+  <!-- ===================== NAV RAIL ===================== -->
+  <aside style="width:288px; flex:0 0 288px; height:100%; background:linear-gradient(180deg,#FCFAFE 0%,#F4F1FA 100%); border-right:1px solid rgba(21,14,43,0.07); display:flex; flex-direction:column; padding:30px 22px 22px; position:relative; z-index:30;">
+    <div style="position:absolute; inset:0; pointer-events:none; background:radial-gradient(120% 50% at 50% -8%, rgba(194,57,159,0.16) 0%, rgba(244,241,250,0) 60%);"></div>
+
+    <div style="position:relative;">
+      <div style="font-family:'Bebas Neue',sans-serif; font-size:54px; line-height:0.82; letter-spacing:0.02em; color:#150E2B; display:flex; align-items:baseline; gap:9px;">
+        НАЙТ<span style="color:#C2399F;">|</span>
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:0.14em; text-transform:uppercase; color:rgba(21,14,43,0.5); margin-top:9px; line-height:1.5;">Центр ракеточных<br>видов спорта · СПб</div>
+    </div>
+
+    <div style="height:1px; background:rgba(21,14,43,0.09); margin:26px 0 22px;"></div>
+
+    <nav style="display:flex; flex-direction:column; gap:3px; position:relative;">
+      <sc-for list="{{ nav }}" as="item" hint-placeholder-count="6">
+        <button type="button" onClick="{{ item.onClick }}" style="{{ item.rowStyle }}">
+          <span style="{{ item.barStyle }}"></span>
+          <span style="{{ item.numStyle }}">{{ item.n }}</span>
+          <span style="{{ item.txtStyle }}">{{ item.t }}</span>
+        </button>
+      </sc-for>
+    </nav>
+
+    <div style="margin-top:auto; position:relative; padding-top:20px;">
+      <div style="display:flex; flex-direction:column; gap:10px; padding:15px 16px; border-radius:14px; background:rgba(21,14,43,0.04); border:1px solid rgba(21,14,43,0.08);">
+        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px;">
+          <span style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.1em; color:rgba(21,14,43,0.5); text-transform:uppercase;">IRR с ТС</span>
+          <span style="font-family:'Bebas Neue',sans-serif; font-size:28px; line-height:0.9; color:#0FA877;">30,6%</span>
+        </div>
+        <div style="height:1px; background:rgba(21,14,43,0.08);"></div>
+        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px;">
+          <span style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.1em; color:rgba(21,14,43,0.5); text-transform:uppercase;">Окупаемость</span>
+          <span style="font-family:'Bebas Neue',sans-serif; font-size:28px; line-height:0.9; color:#150E2B;">3,95<span style="font-size:14px; color:rgba(21,14,43,0.6);"> года</span></span>
+        </div>
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:0.12em; color:rgba(21,14,43,0.3); text-transform:uppercase; margin-top:14px; text-align:center;">Инвест-меморандум · 2026</div>
+    </div>
+  </aside>
+
+  <!-- ===================== CONTENT ===================== -->
+  <main style="flex:1; position:relative; height:100%; overflow:hidden; background:#F4F1FA;">
+
+    <!-- stage layer: persistent 3D iframes -->
+    <div style="{{ stageStyle }}">
+      <iframe id="hallFrame" src="scene.html" title="3D зал" style="{{ hallStyle }}"></iframe>
+      <iframe id="finFrame" src="finance3d.html" title="3D финансы" style="{{ finStyle }}"></iframe>
+    </div>
+
+    <!-- ========= 01 · OVERVIEW (3D-forward) ========= -->
+    <section data-screen-label="01 Обзор" style="{{ pOverview }}">
+      <div style="position:absolute; inset:0; background:linear-gradient(90deg, rgba(244,241,250,0.82) 0%, rgba(244,241,250,0.34) 38%, rgba(244,241,250,0) 62%); pointer-events:none;"></div>
+      <div style="position:relative; height:100%; width:100%; padding:46px 54px 40px; display:flex; flex-direction:column; pointer-events:none;">
+        <div style="flex:1; min-height:0; display:flex; flex-direction:column;">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:14px; letter-spacing:0.18em; text-transform:uppercase; color:#C2399F; pointer-events:auto;">Обзор проекта · концепция</div>
+          <h1 style="font-family:'Bebas Neue',sans-serif; font-weight:400; font-size:62px; line-height:0.92; letter-spacing:0.01em; color:#150E2B; margin:16px 0 0; max-width:640px; text-transform:uppercase; pointer-events:auto;">Мультиформатный центр ракеточных видов спорта</h1>
+          <p style="font-family:'Unbounded',sans-serif; font-weight:300; font-size:15.5px; line-height:1.6; color:rgba(21,14,43,0.78); max-width:520px; margin:20px 0 0; pointer-events:auto;">Падел, бадминтон и настольный теннис под одной крышей в спальном районе Санкт-Петербурга. Каркасное здание 2 100 м² — земля и стройка на собственные средства.</p>
+
+          <div style="display:flex; gap:12px; margin-top:28px; max-width:680px; pointer-events:auto;">
+            <sc-for list="{{ pillars }}" as="p" hint-placeholder-count="3">
+              <div style="flex:1 1 0; padding:16px 18px; border-radius:16px; background:rgba(21,14,43,0.07); border:1px solid rgba(21,14,43,0.13); backdrop-filter:blur(20px);">
+                <div style="font-family:'Bebas Neue',sans-serif; font-size:24px; color:{{ p.tone }}; line-height:1;">{{ p.k }}</div>
+                <div style="font-family:'Unbounded',sans-serif; font-weight:300; font-size:11.5px; line-height:1.45; color:rgba(21,14,43,0.8); margin-top:8px;">{{ p.t }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display:flex; pointer-events:auto; border-radius:18px; overflow:hidden; border:1px solid rgba(21,14,43,0.13); backdrop-filter:blur(22px); background:rgba(244,241,250,0.52); box-shadow:0 20px 60px rgba(21,14,43,0.12);">
+          <sc-for list="{{ heroStats }}" as="s" hint-placeholder-count="6">
+            <div style="flex:1; padding:18px 22px; border-right:1px solid rgba(21,14,43,0.1);">
+              <div style="font-family:'Bebas Neue',sans-serif; font-size:40px; line-height:0.86; color:#150E2B;">{{ s.v }}<span style="font-size:16px; color:{{ s.tone }};"> {{ s.u }}</span></div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(21,14,43,0.55); margin-top:8px; line-height:1.4;">{{ s.l }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========= 04 · LAYOUT (3D-forward) ========= -->
+    <section data-screen-label="04 Планировка" style="{{ pLayout }}">
+      <div style="position:relative; height:100%; width:100%; padding:34px 40px; display:flex; flex-direction:column; pointer-events:none;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:20px;">
+          <div style="pointer-events:auto;">
+            <div style="font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:0.16em; text-transform:uppercase; color:#C2399F;">Планировка зала · виды сверху</div>
+            <h2 style="font-family:'Bebas Neue',sans-serif; font-weight:400; font-size:46px; line-height:0.9; color:#150E2B; margin:8px 0 0; text-transform:uppercase; white-space:nowrap;">Состав помещений</h2>
+          </div>
+          <div style="display:flex; gap:8px; pointer-events:auto;">
+            <button type="button" onClick="{{ toggleRoof }}" style="{{ roofBtnStyle }}"><span style="{{ roofDot }}"></span>Крыша</button>
+            <button type="button" onClick="{{ toggleMezz }}" style="{{ mezzBtnStyle }}"><span style="{{ mezzDot }}"></span>Антресоль</button>
+            <button type="button" onClick="{{ toggleWalk }}" style="{{ walkBtnStyle }}"><span style="{{ walkDot }}"></span>Прогулка</button>
+          </div>
+        </div>
+
+        <!-- zone buttons -->
+        <div style="display:flex; flex-wrap:wrap; gap:7px; margin-top:28px; max-width:560px; pointer-events:auto;">
+          <sc-for list="{{ zones }}" as="z" hint-placeholder-count="11">
+            <button type="button" onClick="{{ z.onClick }}" style="{{ z.style }}">{{ z.t }}</button>
+          </sc-for>
+        </div>
+
+        <!-- spec card bottom-left -->
+        <div style="margin-top:auto; display:flex; gap:14px; align-items:flex-end; pointer-events:none;">
+          <div style="pointer-events:auto; padding:18px 22px; border-radius:16px; background:rgba(244,241,250,0.55); border:1px solid rgba(21,14,43,0.13); backdrop-filter:blur(22px); display:flex; gap:26px;">
+            <sc-for list="{{ buildSpecs }}" as="b" hint-placeholder-count="4">
+              <div>
+                <div style="font-family:'Bebas Neue',sans-serif; font-size:30px; line-height:0.9; color:#150E2B;">{{ b.v }}</div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(21,14,43,0.5); margin-top:5px;">{{ b.l }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="pointer-events:auto; padding:14px 18px; border-radius:14px; background:rgba(244,241,250,0.55); border:1px solid rgba(21,14,43,0.13); backdrop-filter:blur(22px);">
+            <div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(21,14,43,0.5); margin-bottom:8px;">Покрытие кортов</div>
+            <div style="display:flex; gap:6px;">
+              <sc-for list="{{ schemes }}" as="s" hint-placeholder-count="3">
+                <button type="button" onClick="{{ s.onClick }}" style="{{ s.style }}">{{ s.t }}</button>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========= 05 · FINANCE (3D-forward) ========= -->
+    <section data-screen-label="05 Финансы" style="{{ pFinance }}">
+      <div style="position:absolute; inset:0; background:linear-gradient(90deg, rgba(244,241,250,0.9) 0%, rgba(244,241,250,0.55) 30%, rgba(244,241,250,0) 56%); pointer-events:none;"></div>
+      <div style="position:relative; height:100%; width:100%; padding:34px 40px; display:flex; flex-direction:column; pointer-events:none;">
+        <div style="pointer-events:auto;">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:0.16em; text-transform:uppercase; color:#C2399F;">Финансовая модель · 10 лет</div>
+          <h2 style="font-family:'Bebas Neue',sans-serif; font-weight:400; font-size:48px; line-height:0.9; color:#150E2B; margin:8px 0 0; text-transform:uppercase;">Экономика проекта</h2>
+        </div>
+
+        <!-- scenario switch -->
+        <div style="display:flex; gap:8px; margin-top:18px; pointer-events:auto;">
+          <sc-for list="{{ scenBtns }}" as="s" hint-placeholder-count="3">
+            <button type="button" onClick="{{ s.onClick }}" style="{{ s.style }}">
+              <span style="{{ s.dot }}"></span>{{ s.label }}
+            </button>
+          </sc-for>
+        </div>
+
+        <!-- metric grid -->
+        <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:18px; width:392px; pointer-events:auto;">
+          <sc-for list="{{ finCards }}" as="c" hint-placeholder-count="6">
+            <div style="padding:15px 17px; border-radius:14px; background:rgba(244,241,250,0.6); border:1px solid rgba(21,14,43,0.12); backdrop-filter:blur(20px);">
+              <div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(21,14,43,0.5);">{{ c.l }}</div>
+              <div style="font-family:'Bebas Neue',sans-serif; font-size:34px; line-height:0.9; color:{{ c.tone }}; margin-top:6px;">{{ c.v }}<span style="font-size:15px; color:rgba(21,14,43,0.6);"> {{ c.u }}</span></div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="margin-top:auto; pointer-events:auto; max-width:540px; font-family:'Unbounded',sans-serif; font-weight:300; font-size:12px; line-height:1.6; color:rgba(21,14,43,0.62);">
+          <span style="color:#150E2B;">{{ finActive.note }}</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========= 02 · MARKET (3D-forward) ========= -->
+    <section data-screen-label="02 Рынок" style="{{ pMarket }}">
+      <div style="position:absolute; inset:0; background:linear-gradient(90deg, rgba(244,241,250,0.92) 0%, rgba(244,241,250,0.5) 33%, rgba(244,241,250,0) 60%); pointer-events:none;"></div>
+      <div style="position:relative; height:100%; width:100%; padding:40px 50px; display:flex; flex-direction:column; pointer-events:none;">
+        <div style="pointer-events:auto;">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:14px; letter-spacing:0.16em; text-transform:uppercase; color:#C2399F;">Анализ рынка · СПб · июнь 2026</div>
+          <h2 style="font-family:'Bebas Neue',sans-serif; font-weight:400; font-size:58px; line-height:0.9; color:#150E2B; margin:10px 0 0; text-transform:uppercase; white-space:nowrap;">Спрос обгоняет предложение</h2>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:24px; pointer-events:auto;">
+          <sc-for list="{{ sportTabs }}" as="t" hint-placeholder-count="4">
+            <button type="button" onClick="{{ t.onClick }}" style="{{ t.style }}"><span style="{{ t.dot }}"></span>{{ t.t }}</button>
+          </sc-for>
+        </div>
+
+        <div style="margin-top:24px; width:600px; pointer-events:auto; background:rgba(244,241,250,0.66); border:1px solid rgba(21,14,43,0.14); backdrop-filter:blur(26px); border-radius:24px; padding:24px 32px; display:flex; flex-direction:column; box-shadow:0 28px 70px rgba(21,14,43,0.13);">
+          <div style="display:flex; flex-direction:column; gap:5px;">
+            <h3 style="font-family:'Bebas Neue',sans-serif; font-weight:400; font-size:44px; line-height:0.9; color:#150E2B; margin:0; text-transform:uppercase;">{{ activeSport.title }}</h3>
+            <span style="font-family:'Unbounded',sans-serif; font-weight:300; font-size:15px; color:rgba(21,14,43,0.72);">{{ activeSport.tag }}</span>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:18px;">
+            <sc-for list="{{ activeSport.metrics }}" as="m" hint-placeholder-count="3">
+              <div style="background:rgba(21,14,43,0.06); border:1px solid rgba(21,14,43,0.09); border-radius:16px; padding:17px 17px;">
+                <div style="font-family:'Bebas Neue',sans-serif; font-size:42px; line-height:0.82; color:{{ m.tone }};">{{ m.v }}</div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:0.04em; text-transform:uppercase; color:rgba(21,14,43,0.6); margin-top:11px; line-height:1.45;">{{ m.l }}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:rgba(21,14,43,0.42); margin:18px 0 12px;">Что это значит для проекта</div>
+          <div style="display:flex; flex-direction:column; gap:11px;">
+            <sc-for list="{{ activeSport.bullets }}" as="b" hint-placeholder-count="3">
+              <div style="display:flex; gap:13px; align-items:flex-start;">
+                <span style="width:8px; height:8px; border-radius:50%; background:#C2399F; margin-top:8px; flex:0 0 auto; box-shadow:0 0 9px rgba(194,57,159,0.6);"></span>
+                <span style="font-family:'Unbounded',sans-serif; font-weight:300; font-size:15px; line-height:1.45; color:rgba(21,14,43,0.9);">{{ b }}</span>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="display:flex; gap:0; border-top:1px solid rgba(21,14,43,0.12); padding-top:16px; margin-top:18px;">
+            <div style="flex:1;"><div style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(21,14,43,0.45);">Дефицит</div><div style="font-family:'Bebas Neue',sans-serif; font-size:32px; color:#C2399F; margin-top:6px; line-height:0.9;">{{ activeSport.deficit }}</div></div>
+            <div style="flex:1.3;"><div style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(21,14,43,0.45);">Цена</div><div style="font-family:'Bebas Neue',sans-serif; font-size:32px; color:#150E2B; margin-top:6px; line-height:0.9;">{{ activeSport.price }}</div></div>
+            <div style="flex:1.5;"><div style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(21,14,43,0.45);">Аудитория</div><div style="font-family:'Unbounded',sans-serif; font-weight:400; font-size:14.5px; color:#150E2B; margin-top:8px; line-height:1.3;">{{ activeSport.aud }}</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========= 03 · LOCATION (3D-forward) ========= -->
+    <section data-screen-label="03 Локация" style="{{ pLocation }}">
+      <div style="position:absolute; inset:0; background:linear-gradient(90deg, rgba(244,241,250,0.94) 0%, rgba(244,241,250,0.62) 42%, rgba(244,241,250,0) 72%); pointer-events:none;"></div>
+      <div style="position:relative; height:100%; width:100%; padding:40px 50px; display:flex; flex-direction:column; pointer-events:none;">
+        <div style="pointer-events:auto;">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:14px; letter-spacing:0.16em; text-transform:uppercase; color:#C2399F;">Район и локация · СПб · отбор площадки</div>
+          <h2 style="font-family:'Bebas Neue',sans-serif; font-weight:400; font-size:58px; line-height:0.9; color:#150E2B; margin:10px 0 0; text-transform:uppercase; white-space:nowrap;">Где дефицит максимален</h2>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:22px; pointer-events:auto;">
+          <sc-for list="{{ locTabs }}" as="t" hint-placeholder-count="4">
+            <button type="button" onClick="{{ t.onClick }}" style="{{ t.style }}"><span style="{{ t.dot }}"></span>{{ t.t }}</button>
+          </sc-for>
+        </div>
+
+        <div style="margin-top:20px; width:640px; pointer-events:auto; background:rgba(244,241,250,0.66); border:1px solid rgba(21,14,43,0.14); backdrop-filter:blur(26px); border-radius:24px; padding:22px 30px; display:flex; flex-direction:column; box-shadow:0 28px 70px rgba(21,14,43,0.13);">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:18px;">
+            <div style="display:flex; flex-direction:column; gap:7px;">
+              <h3 style="font-family:'Bebas Neue',sans-serif; font-weight:400; font-size:42px; line-height:0.9; color:#150E2B; margin:0; text-transform:uppercase; white-space:nowrap;">{{ activeLoc.short }}</h3>
+              <span style="font-family:'Unbounded',sans-serif; font-weight:300; font-size:13.5px; line-height:1.5; color:rgba(21,14,43,0.72); max-width:400px;">{{ activeLoc.note }}</span>
+            </div>
+            <div style="text-align:right; flex:0 0 auto;">
+              <div style="font-family:'Bebas Neue',sans-serif; font-size:56px; line-height:0.78; color:#0FA877;">{{ activeLoc.total }}</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(21,14,43,0.45); margin-top:3px;">балл / 30</div>
+            </div>
+          </div>
+
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:rgba(21,14,43,0.42); margin:20px 0 13px;">Оценка по 6 критериям</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:11px 26px;">
+            <sc-for list="{{ activeLoc.crit }}" as="c" hint-placeholder-count="6">
+              <div style="display:flex; align-items:center; gap:11px;">
+                <span style="font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:0.03em; text-transform:uppercase; color:rgba(21,14,43,0.55); width:74px; flex:0 0 auto;">{{ c.l }}</span>
+                <span style="flex:1; height:8px; border-radius:8px; background:rgba(21,14,43,0.1); overflow:hidden;"><span style="{{ c.barStyle }}"></span></span>
+                <span style="font-family:'Bebas Neue',sans-serif; font-size:18px; color:#150E2B; width:16px; text-align:right;">{{ c.v }}</span>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="display:flex; gap:0; border-top:1px solid rgba(21,14,43,0.12); padding-top:16px; margin-top:20px;">
+            <div style="flex:0 0 auto; padding-right:28px;"><div style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(21,14,43,0.45);">Взрослых</div><div style="font-family:'Bebas Neue',sans-serif; font-size:30px; color:#150E2B; margin-top:6px; line-height:0.9;">{{ activeLoc.adults }}</div></div>
+            <div style="flex:0 0 auto; padding-right:28px;"><div style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(21,14,43,0.45);">Падел-кортов</div><div style="font-family:'Bebas Neue',sans-serif; font-size:30px; color:#C2399F; margin-top:6px; line-height:0.9;">{{ activeLoc.courts }}</div></div>
+            <div style="flex:1;"><div style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(21,14,43,0.45);">Вывод</div><div style="font-family:'Unbounded',sans-serif; font-weight:400; font-size:12.5px; color:#150E2B; margin-top:8px; line-height:1.35;">{{ activeLoc.verdict }}</div></div>
+          </div>
+        </div>
+
+        <!-- city-level insights strip -->
+        <div style="margin-top:auto; display:flex; gap:12px; width:640px; pointer-events:auto;">
+          <div style="flex:1; padding:14px 16px; border-radius:16px; background:rgba(244,241,250,0.52); border:1px solid rgba(21,14,43,0.13); backdrop-filter:blur(20px);"><div style="font-family:'Bebas Neue',sans-serif; font-size:28px; color:#C2399F; line-height:0.9;">65,8%</div><div style="font-family:'Unbounded',sans-serif; font-weight:300; font-size:10.5px; line-height:1.45; color:rgba(21,14,43,0.78); margin-top:7px;">обеспеченность города спортсооружениями — дефицит трети мощностей</div></div>
+          <div style="flex:1; padding:14px 16px; border-radius:16px; background:rgba(244,241,250,0.52); border:1px solid rgba(21,14,43,0.13); backdrop-filter:blur(20px);"><div style="font-family:'Bebas Neue',sans-serif; font-size:28px; color:#E06A1E; line-height:0.9;">330+ тыс.</div><div style="font-family:'Unbounded',sans-serif; font-weight:300; font-size:10.5px; line-height:1.45; color:rgba(21,14,43,0.78); margin-top:7px;">жителей пригородного пояса без ракеточного объекта</div></div>
+          <div style="flex:1; padding:14px 16px; border-radius:16px; background:rgba(244,241,250,0.52); border:1px solid rgba(21,14,43,0.13); backdrop-filter:blur(20px);"><div style="font-family:'Bebas Neue',sans-serif; font-size:28px; color:#0FA877; line-height:0.9;">ВМЯЧ</div><div style="font-family:'Unbounded',sans-serif; font-weight:300; font-size:10.5px; line-height:1.45; color:rgba(21,14,43,0.78); margin-top:7px;">единственный аналог-мультиформат — модель доказана</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========= 06 · DIGITAL (feature cards) ========= -->
+    <section data-screen-label="06 Цифра" style="{{ pDigital }}">
+      <div style="position:absolute; inset:0; background:radial-gradient(130% 80% at 82% -14%, rgba(108,48,214,0.22), rgba(244,241,250,0) 56%), radial-gradient(80% 70% at -8% 112%, rgba(194,57,159,0.13), rgba(244,241,250,0) 55%), #F4F1FA;"></div>
+      <div style="position:relative; height:100%; width:100%; padding:26px 34px 22px; display:flex; flex-direction:column;">
+
+        <!-- header -->
+        <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex:0 0 auto;">
+          <div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:0.16em; text-transform:uppercase; color:#C2399F; display:flex; align-items:center; gap:9px;">
+              <span style="width:7px; height:7px; border-radius:50%; background:#0FA877; box-shadow:0 0 9px #0FA877; animation:nblink 1.6s infinite;"></span>
+              Цифровой контур · НАЙТ.OS
+            </div>
+            <h2 style="font-family:'Bebas Neue',sans-serif; font-weight:400; font-size:38px; line-height:0.9; color:#150E2B; margin:6px 0 0; text-transform:uppercase;">Цифровая экосистема</h2>
+            <p style="font-family:'Unbounded',sans-serif; font-weight:300; font-size:12px; line-height:1.45; color:rgba(21,14,43,0.7); margin:6px 0 0; max-width:620px;"><span style="color:#150E2B;">Покупаем типовое — строим уникальное.</span> Шесть контуров клуба в одном ядре данных: автоматизация вместо ФОТ и удержание игрока.</p>
+          </div>
+          <div style="display:flex; gap:9px;">
+            <sc-for list="{{ digValueChips }}" as="c" hint-placeholder-count="3">
+              <div style="padding:11px 15px; border-radius:13px; background:rgba(21,14,43,0.05); border:1px solid rgba(21,14,43,0.12); text-align:right; min-width:122px;">
+                <div style="font-family:'Bebas Neue',sans-serif; font-size:24px; line-height:0.9; color:{{ c.tone }};">{{ c.k }}</div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:0.07em; text-transform:uppercase; color:rgba(21,14,43,0.55); margin-top:5px; line-height:1.3;">{{ c.t }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <!-- cards -->
+        <div style="flex:1; min-height:0; display:flex; flex-direction:column; gap:11px; margin-top:12px;">
+
+          <!-- Row A -->
+          <div style="display:grid; grid-template-columns:1.34fr 1fr; gap:11px; flex:1.3 1 0; min-height:0;">
+
+            <!-- Card: Finance -->
+            <div style="border-radius:16px; background:rgba(21,14,43,0.03); border:1px solid rgba(21,14,43,0.09); padding:16px 18px; display:flex; flex-direction:column; min-height:0; position:relative; overflow:hidden;">
+              <div style="display:flex; align-items:flex-start; gap:11px;">
+                <span style="width:34px; height:34px; border-radius:10px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; background:rgba(194,57,159,0.16); border:1px solid rgba(194,57,159,0.4);">{{ finIcon }}</span>
+                <div style="flex:1; min-width:0;">
+                  <div style="display:flex; align-items:center; gap:9px;">
+                    <span style="font-family:'Unbounded',sans-serif; font-weight:500; font-size:15px; color:#150E2B;">Финансы в реальном времени</span>
+                    <span style="font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:0.06em; text-transform:uppercase; color:#0FA877; padding:3px 8px; border-radius:999px; background:rgba(15,168,119,0.12); border:1px solid rgba(15,168,119,0.3);">Своя разработка · BI</span>
+                  </div>
+                  <div style="font-family:'Unbounded',sans-serif; font-weight:300; font-size:11px; line-height:1.45; color:rgba(21,14,43,0.62); margin-top:5px;">Выручка, расходы план-vs-факт, маржа и заполняемость — день за днём, без бухгалтера на месте.</div>
+                </div>
+              </div>
+              <div style="display:flex; gap:8px; margin-top:11px;">
+                <sc-for list="{{ finKpiChips }}" as="k" hint-placeholder-count="4">
+                  <div style="flex:1 1 0; min-width:0; padding:9px 11px; border-radius:11px; background:rgba(21,14,43,0.04); border:1px solid rgba(21,14,43,0.08);">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                      <span style="font-family:'JetBrains Mono',monospace; font-size:7.5px; letter-spacing:0.05em; text-transform:uppercase; color:rgba(21,14,43,0.5); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ k.label }}</span>
+                      <sc-if value="{{ k.delta }}" hint-placeholder-val="">
+                        <span style="font-family:'JetBrains Mono',monospace; font-size:8.5px; font-weight:600; color:{{ k.deltaColor }}; flex:0 0 auto;">{{ k.delta }}</span>
+                      </sc-if>
+                    </div>
+                    <div style="display:flex; align-items:baseline; gap:3px; margin-top:5px;">
+                      <span style="font-family:'Bebas Neue',sans-serif; font-size:24px; line-height:0.85; color:{{ k.tone }};">{{ k.value }}</span>
+                      <span style="font-family:'Bebas Neue',sans-serif; font-size:12px; color:rgba(21,14,43,0.5);">{{ k.unit }}</span>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="margin-top:11px; flex:1; min-height:0; display:flex; flex-direction:column;">
+                <div style="display:flex; align-items:center; gap:9px; margin-bottom:7px;">
+                  <span style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:rgba(21,14,43,0.5);">Динамика · 31 день · наведите</span>
+                  <div style="margin-left:auto; display:flex; gap:3px; padding:3px; border-radius:9px; background:rgba(21,14,43,0.05); border:1px solid rgba(21,14,43,0.1);">
+                    <sc-for list="{{ chartStyleBtns }}" as="b" hint-placeholder-count="3">
+                      <button type="button" onClick="{{ b.onClick }}" style="{{ b.style }}">{{ b.label }}</button>
+                    </sc-for>
+                  </div>
+                </div>
+                {{ finChart }}
+              </div>
+            </div>
+
+            <!-- Card: Безлюдные часы -->
+            <div style="border-radius:16px; background:linear-gradient(160deg, rgba(15,168,119,0.07), rgba(21,14,43,0.02)); border:1px solid rgba(15,168,119,0.2); padding:14px 18px; display:flex; flex-direction:column; min-height:0; overflow:hidden;">
+              <div style="display:flex; align-items:flex-start; gap:11px;">
+                <span style="width:34px; height:34px; border-radius:10px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; background:rgba(15,168,119,0.16); border:1px solid rgba(15,168,119,0.4);">{{ idleIcon }}</span>
+                <div style="flex:1; min-width:0;">
+                  <div style="display:flex; align-items:center; gap:9px;">
+                    <span style="font-family:'Unbounded',sans-serif; font-weight:500; font-size:15px; color:#150E2B;">Безлюдные часы</span>
+                    <span style="font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:0.06em; text-transform:uppercase; color:#E06A1E; padding:3px 8px; border-radius:999px; background:rgba(224,106,30,0.12); border:1px solid rgba(224,106,30,0.3);">Гибрид · СКУД</span>
+                  </div>
+                  <div style="font-family:'Unbounded',sans-serif; font-weight:300; font-size:11px; line-height:1.45; color:rgba(21,14,43,0.62); margin-top:5px;">Комплекс работает без администратора: доступ по QR из брони, свет и табло — автоматически.</div>
+                </div>
+              </div>
+              <div style="display:flex; align-items:baseline; gap:10px; margin-top:7px;">
+                <span style="font-family:'Bebas Neue',sans-serif; font-size:30px; line-height:0.8; color:#0FA877; white-space:nowrap; flex:0 0 auto;">07:00–13:00</span>
+                <span style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(21,14,43,0.5); white-space:nowrap;">автономно</span>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:5px; margin-top:8px;">
+                <sc-for list="{{ autoChips }}" as="a" hint-placeholder-count="3">
+                  <div style="display:flex; align-items:center; gap:9px; padding:6px 11px; border-radius:10px; background:rgba(21,14,43,0.04); border:1px solid rgba(21,14,43,0.08);">
+                    <span style="width:24px; height:24px; border-radius:7px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; background:rgba(15,168,119,0.14); border:1px solid rgba(15,168,119,0.3);">{{ a.ico }}</span>
+                    <span style="font-family:'Unbounded',sans-serif; font-weight:300; font-size:11px; color:rgba(21,14,43,0.85); flex:1;">{{ a.label }}</span>
+                    <span style="font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:0.06em; text-transform:uppercase; color:#0FA877;">авто</span>
+                    <span style="width:26px; height:15px; border-radius:999px; background:rgba(15,168,119,0.35); border:1px solid rgba(15,168,119,0.5); position:relative; flex:0 0 auto;"><span style="position:absolute; top:1px; right:1px; width:11px; height:11px; border-radius:50%; background:#0FA877; box-shadow:0 0 6px #0FA877;"></span></span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="margin-top:auto; padding:9px 13px; border-radius:11px; background:rgba(15,168,119,0.1); border:1px solid rgba(15,168,119,0.28);">
+                <div style="font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(21,14,43,0.55);">Экономия ФОТ</div>
+                <div style="font-family:'Bebas Neue',sans-serif; font-size:22px; line-height:0.9; color:#0FA877; margin-top:2px;">−1,0–1,8 млн <span style="font-size:13px; color:rgba(21,14,43,0.55);">₽/год</span></div>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px; margin-top:7px; padding:7px 11px; border-radius:10px; background:rgba(21,14,43,0.05); border:1px solid rgba(21,14,43,0.07);">
+                <span style="width:6px; height:6px; border-radius:50%; background:#C2399F; box-shadow:0 0 8px #C2399F; animation:nblink 1.4s infinite; flex:0 0 auto;"></span>
+                <span style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.05em; text-transform:uppercase; color:rgba(21,14,43,0.5);">онлайн-касса</span>
+                <span style="font-family:'Unbounded',sans-serif; font-weight:400; font-size:11px; color:#150E2B; margin-left:auto; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ kassaLast.name }}</span>
+                <span style="font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; color:#0FA877; flex:0 0 auto;">{{ kassaLast.sum }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Row B -->
+          <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:11px; flex:1 1 0; min-height:0;">
+
+            <!-- Card: Кабинет спортсмена -->
+            <div style="border-radius:16px; background:rgba(21,14,43,0.03); border:1px solid rgba(21,14,43,0.09); padding:15px 17px; display:flex; flex-direction:column; min-height:0;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span style="width:30px; height:30px; border-radius:9px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; background:rgba(194,57,159,0.15); border:1px solid rgba(194,57,159,0.4);">{{ cabIcon }}</span>
+                <span style="font-family:'Unbounded',sans-serif; font-weight:500; font-size:14px; color:#150E2B;">Кабинет спортсмена</span>
+              </div>
+              <div style="font-family:'Unbounded',sans-serif; font-weight:300; font-size:10.5px; line-height:1.45; color:rgba(21,14,43,0.6); margin-top:9px;">Анкета → план тренировки → чекпоинты → трекеры. Ведёт методист, 1–2 на комплекс.</div>
+              <div style="margin-top:11px; flex:1; min-height:0; border-radius:11px; background:rgba(21,14,43,0.045); border:1px solid rgba(21,14,43,0.07); padding:11px 12px; display:flex; flex-direction:column; gap:7px;">
+                <div style="display:flex; align-items:center; justify-content:space-between;">
+                  <span style="font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(21,14,43,0.5);">План · техника подачи</span>
+                  <span style="font-family:'Bebas Neue',sans-serif; font-size:16px; color:#C2399F;">{{ planProgress }}</span>
+                </div>
+                <sc-for list="{{ planItems }}" as="p" hint-placeholder-count="4">
+                  <div style="display:flex; align-items:center; gap:9px;">
+                    <span style="{{ p.markStyle }}">{{ p.mark }}</span>
+                    <span style="{{ p.txtStyle }}">{{ p.text }}</span>
+                  </div>
+                </sc-for>
+                <div style="margin-top:auto; display:flex; align-items:center; gap:8px; padding-top:8px; border-top:1px solid rgba(21,14,43,0.06);">
+                  <span style="display:flex;">{{ trackerIco }}</span>
+                  <span style="font-family:'JetBrains Mono',monospace; font-size:8.5px; color:rgba(21,14,43,0.55);">Whoop · нагрузка 6,4 · восст. 82%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card: Турниры и рейтинги -->
+            <div style="border-radius:16px; background:rgba(21,14,43,0.03); border:1px solid rgba(21,14,43,0.09); padding:15px 17px; display:flex; flex-direction:column; min-height:0;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span style="width:30px; height:30px; border-radius:9px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; background:rgba(224,106,30,0.15); border:1px solid rgba(224,106,30,0.4);">{{ tourIcon }}</span>
+                <span style="font-family:'Unbounded',sans-serif; font-weight:500; font-size:14px; color:#150E2B;">Турниры и рейтинги</span>
+              </div>
+              <div style="font-family:'Unbounded',sans-serif; font-weight:300; font-size:10.5px; line-height:1.45; color:rgba(21,14,43,0.6); margin-top:9px;">Авто-жеребьёвка и матчмейкинг по уровню. <span style="color:#150E2B;">Рейтинг не переносится — игрок остаётся.</span></div>
+              <div style="margin-top:11px; flex:1; min-height:0; border-radius:11px; background:rgba(21,14,43,0.045); border:1px solid rgba(21,14,43,0.07); padding:10px 12px; display:flex; flex-direction:column;">
+                <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(21,14,43,0.5); margin-bottom:4px;">Рейтинг · падел · клуб</div>
+                <sc-for list="{{ playerRows }}" as="r" hint-placeholder-count="4">
+                  <div style="display:flex; align-items:center; gap:9px; padding:4px 0; border-bottom:1px solid rgba(21,14,43,0.05);">
+                    <span style="{{ r.rankStyle }}">{{ r.rank }}</span>
+                    <span style="{{ r.avStyle }}">{{ r.init }}</span>
+                    <span style="font-family:'Unbounded',sans-serif; font-weight:300; font-size:11px; color:#150E2B; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ r.name }}</span>
+                    <span style="font-family:'Bebas Neue',sans-serif; font-size:18px; color:{{ r.tone }};">{{ r.rating }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <!-- Card: 6 контуров -->
+            <div style="border-radius:16px; background:rgba(21,14,43,0.03); border:1px solid rgba(21,14,43,0.09); padding:15px 17px; display:flex; flex-direction:column; min-height:0;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span style="width:30px; height:30px; border-radius:9px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; background:rgba(108,48,214,0.18); border:1px solid rgba(108,48,214,0.4);">{{ coreIcon }}</span>
+                <span style="font-family:'Unbounded',sans-serif; font-weight:500; font-size:14px; color:#150E2B;">6 контуров — одно ядро</span>
+              </div>
+              <div style="margin-top:11px; flex:1; min-height:0; display:flex; flex-direction:column; gap:5px;">
+                <sc-for list="{{ layerRows }}" as="l" hint-placeholder-count="6">
+                  <div style="display:flex; align-items:center; gap:9px; flex:1 1 0; min-height:0; padding:0 2px;">
+                    <span style="width:8px; height:8px; border-radius:50%; flex:0 0 auto; background:{{ l.color }}; box-shadow:0 0 7px {{ l.color }};"></span>
+                    <div style="min-width:0; flex:1;">
+                      <div style="font-family:'Unbounded',sans-serif; font-weight:400; font-size:10.5px; color:#150E2B; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ l.name }}</div>
+                      <div style="font-family:'JetBrains Mono',monospace; font-size:8px; color:rgba(21,14,43,0.45); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ l.sol }}</div>
+                    </div>
+                    <span style="{{ l.badgeStyle }}">{{ l.badge }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+
+          <!-- tags -->
+          <div style="display:flex; gap:9px; flex:0 0 auto;">
+            <sc-for list="{{ digTags }}" as="g" hint-placeholder-count="4">
+              <span style="{{ g.style }}">{{ g.label }}</span>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { section:'overview', scenario:'avg', hallView:'overview', roof:true, mezz:true, scheme:'Малина', marketTab:'padel', district:'Выборгский (север)', walk:false, chartStyle:'area', chartOff:{}, chartHover:null, turnover:22400, feedIdx:0 };
+
+  componentDidMount(){
+    this.sceneReady = false; this.finReady = false;
+    this._onMsg = (e)=>{
+      const m = e.data; if(!m) return;
+      if(m.ns==='night-evt'){
+        if(m.type==='ready'){ this.sceneReady=true; this._applyHall(); }
+        else if(m.type==='roof'){ this.setState({roof:!!m.detail}); }
+        else if(m.type==='mezz'){ this.setState({mezz:!!m.detail}); }
+        else if(m.type==='walk'){ this.setState({walk:!!m.detail}); }
+      } else if(m.ns==='finance-evt'){
+        if(m.type==='ready'){ this.finReady=true; if(this.state.section==='finance') this._applyFin(); else this.postFin({cmd:'setActive',value:false}); }
       }
-      wbtn.addEventListener('click', function () { if (window.NightApp) window.NightApp.toggleWalk(); });
-      document.getElementById('walkExit').addEventListener('click', function () { if (window.NightApp) window.NightApp.stopWalk(); });
-      document.addEventListener('night:walk', function (e) { setWalkUI(!!e.detail); });
+    };
+    window.addEventListener('message', this._onMsg);
+    this._fit = ()=>{ const app=document.getElementById('nb-app'); if(!app) return; const s=Math.min(window.innerWidth/1440, window.innerHeight/810); app.style.transform='scale('+s+')'; };
+    this._fit();
+    window.addEventListener('resize', this._fit);
+    setTimeout(this._fit, 60); setTimeout(this._fit, 300);
+    this._live=setInterval(()=>{ if(this.state.section==='digital') this.setState(s=>({turnover:s.turnover+120+Math.round(Math.random()*460), feedIdx:(s.feedIdx+1)%5})); }, 2800);
+  }
+  componentWillUnmount(){ window.removeEventListener('message', this._onMsg); if(this._fit) window.removeEventListener('resize', this._fit); if(this._live) clearInterval(this._live); }
 
-      // кнопки-джойстик: удержание = движение
-      document.querySelectorAll('#walkpad .wp-btn[data-move]').forEach(function (b) {
-        const key = b.getAttribute('data-move');
-        const on = function (e) { e.preventDefault(); if (window.NightApp) window.NightApp.setMove(key, true); b.classList.add('act'); };
-        const off = function () { if (window.NightApp) window.NightApp.setMove(key, false); b.classList.remove('act'); };
-        b.addEventListener('pointerdown', on);
-        b.addEventListener('pointerup', off);
-        b.addEventListener('pointerleave', off);
-        b.addEventListener('pointercancel', off);
-      });
-    })();
-  </script>
+  _hall(){ const f=document.getElementById('hallFrame'); return f && f.contentWindow; }
+  _fin(){ const f=document.getElementById('finFrame'); return f && f.contentWindow; }
+  postHall(msg){ const w=this._hall(); if(w) w.postMessage(Object.assign({ns:'night'},msg),'*'); }
+  postFin(msg){ const w=this._fin(); if(w) w.postMessage(Object.assign({ns:'finance'},msg),'*'); }
 
-  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
-  <script type="text/babel" src="js/tweaks-panel.jsx"></script>
-  <script type="text/babel" src="js/night-tweaks.jsx"></script>
+  _syncActive(id){
+    const sec = id || this.state.section;
+    this.postHall({cmd:'setActive', value:(sec==='overview'||sec==='layout'||sec==='market'||sec==='location')});
+    this.postFin({cmd:'setActive', value:(sec==='finance')});
+  }
+  _applyHall(){
+    this._syncActive();
+    const v = this.state.hallView;
+    if(v==='cutaway'){ this.postHall({cmd:'flyTo',name:'overview'}); setTimeout(()=>this.postHall({cmd:'setRoof',value:false}),60); }
+    else this.postHall({cmd:'flyTo',name:v});
+    this.postHall({cmd:'setScheme',value:this.state.scheme});
+  }
+  _applyFin(){ this._syncActive(); this.postFin({cmd:'setScenario',value:this.state.scenario}); this.postFin({cmd:'play'}); }
+
+  setSection = (id)=>{
+    if(this.state.walk && id!=='layout'){ this.postHall({cmd:'stopWalk'}); }
+    this.setState({section:id});
+    this._syncActive(id);
+    if(id==='overview'){ this.setState({hallView:'overview'}); this.postHall({cmd:'flyTo',name:'overview'}); }
+    else if(id==='layout'){ if(this.state.hallView==='overview'){ this.setState({hallView:'cutaway'}); this.postHall({cmd:'flyTo',name:'overview'}); setTimeout(()=>this.postHall({cmd:'setRoof',value:false}),60);} else { this._applyHall(); } }
+    else if(id==='finance'){ this._applyFin(); }
+    else if(id==='market'){ this.postHall({cmd:'flyTo',name:this._marketView(this.state.marketTab)}); }
+    else if(id==='location'){ this.postHall({cmd:'flyTo',name:this._locView(this.state.district)}); }
+  };
+
+  _marketView(t){ return ({padel:'padel',badminton:'badminton',tt:'tt',tennis:'overview'})[t] || 'overview'; }
+  _locView(name){ return ({'Выборгский (север)':'lounge','Невский':'reception','Красносельский':'tech','Шушары / Славянка':'lounge'})[name] || 'lounge'; }
+
+  setHallView = (v)=>{
+    this.setState({hallView:v});
+    if(v==='cutaway'){ this.postHall({cmd:'flyTo',name:'overview'}); setTimeout(()=>this.postHall({cmd:'setRoof',value:false}),60); }
+    else this.postHall({cmd:'flyTo',name:v});
+  };
+  toggleRoof = ()=>{ this.postHall({cmd:'setRoof',value:!this.state.roof}); };
+  toggleMezz = ()=>{ this.postHall({cmd:'setMezz',value:!this.state.mezz}); };
+  toggleWalk = ()=>{ this.postHall({cmd:'toggleWalk'}); };
+  setScheme = (n)=>{ this.setState({scheme:n}); this.postHall({cmd:'setScheme',value:n}); };
+  setScenario = (s)=>{ this.setState({scenario:s}); this.postFin({cmd:'setScenario',value:s}); };
+  setMarketTab = (t)=>{ this.setState({marketTab:t}); this.postHall({cmd:'flyTo',name:this._marketView(t)}); };
+  setDistrict = (d)=>{ this.setState({district:d}); this.postHall({cmd:'flyTo',name:this._locView(d)}); };
+
+  // ----- digital screen handlers -----
+  setDigScreen = (v)=>{ this.setState({digScreen:v}); };
+  setChartStyle = (v)=>{ this.setState({chartStyle:v}); };
+  toggleSeries = (id)=>{ this.setState(s=>({chartOff:Object.assign({},s.chartOff,{[id]:!s.chartOff[id]})})); };
+  setChartHover = (i)=>{ if(this.state.chartHover!==i) this.setState({chartHover:i}); };
+  setFinPeriod = (v)=>{ this.setState({finPeriod:v}); };
+  _chartMove = (e)=>{ const el=this._chartWrap; if(!el) return; const pt=(e.touches&&e.touches[0])||(e.changedTouches&&e.changedTouches[0])||e; const cx=pt.clientX; if(cx==null) return; if(e.touches&&e.cancelable) e.preventDefault(); const r=el.getBoundingClientRect(); const x=(cx-r.left)/r.width; const W=1000,padL=10,plotW=W-20; const t=(x*W-padL)/plotW; let idx=Math.round(t*30); idx=Math.max(0,Math.min(30,idx)); this.setChartHover(idx); };
+
+  icon(name,size,color,sw){
+    const P={
+      'layout-dashboard':'<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',
+      'banknote':'<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/>',
+      'card':'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+      'users':'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+      'award':'<circle cx="12" cy="8" r="6"/><path d="M15.5 13 17 22l-5-3-5 3 1.5-9"/>',
+      'calendar':'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+      'calendar-check':'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4"/>',
+      'gift':'<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M5 12v9h14v-9"/><path d="M12 8C12 8 11 3 8 3a2.5 2.5 0 0 0 0 5zM12 8s1-5 4-5a2.5 2.5 0 0 1 0 5z"/>',
+      'sliders':'<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>',
+      'wallet':'<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/>',
+      'trending-up':'<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',
+      'trending-down':'<polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/>',
+      'percent':'<line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>',
+      'eye':'<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
+      'user-plus':'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>',
+      'activity':'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+      'lock':'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+      'download':'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+      'building':'<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01M16 6h.01M8 10h.01M16 10h.01M8 14h.01M16 14h.01"/>',
+      'scale':'<path d="M12 3v18M5 21h14"/><path d="M7 7 3 13h8zM17 7l-4 6h8z"/><path d="M7 7l5-1 5 1"/>',
+      'bar-chart':'<line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/>',
+      'flame':'<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1-2-.2-4 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+      'check':'<polyline points="20 6 9 17 4 12"/>',
+      'clock':'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+      'qr':'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3M21 14v3M14 21h7M18 17v4"/>',
+      'bulb':'<path d="M9 18h6M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/>',
+      'monitor':'<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>',
+    };
+    return React.createElement('svg',{width:size||16,height:size||16,viewBox:'0 0 24 24',fill:'none',stroke:color||'currentColor',strokeWidth:sw||1.8,strokeLinecap:'round',strokeLinejoin:'round',dangerouslySetInnerHTML:{__html:P[name]||''}});
+  }
+
+  starRow(n,color,size){
+    const RE=React.createElement; const arr=[];
+    const path='<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>';
+    for(let i=0;i<5;i++){ const on=i<n; arr.push(RE('svg',{key:i,width:size,height:size,viewBox:'0 0 24 24',fill:on?color:'none',stroke:on?color:'rgba(21,14,43,0.25)',strokeWidth:1.5,dangerouslySetInnerHTML:{__html:path}})); }
+    return RE('span',{style:{display:'flex',gap:'1px'}},arr);
+  }
+
+  _series(){
+    if(this._SER) return this._SER;
+    const N=31; const DAYS=Array.from({length:N},(_,i)=>String(i+1));
+    const gen=(base,amp,wb,seed)=>{ let s=seed; return DAYS.map((_,i)=>{ const dow=(i+3)%7; const we=dow===5||dow===6; s=(s*9301+49297)%233280; const j=(s/233280-0.5)*2*amp; return Math.max(0,Math.round(base+j+(we?wb:0))); }); };
+    const rows=[
+      {id:'fill',short:'Запол.',unit:'%',color:'#1B97C4',data:gen(74,9,14,11).map(v=>Math.min(100,v))},
+      {id:'tx',short:'Транз.',unit:'₽',color:'#C2399F',data:gen(40000,9000,18000,53)},
+      {id:'exp',short:'Расход',unit:'₽',color:'#E06A1E',data:gen(30000,6000,7000,97)},
+      {id:'site',short:'Сайт',unit:'',color:'#0FA877',data:gen(560,130,240,29)},
+    ];
+    this._SER={days:DAYS,rows}; return this._SER;
+  }
+
+  buildChart(h){
+    const RE=React.createElement;
+    const SER=this._series(); const DAYS=SER.days; const rows=SER.rows; const n=DAYS.length;
+    const W=1000,H=h||150,padL=10,padR=10,padT=12,padB=22;
+    const plotW=W-padL-padR, plotH=H-padT-padB, step=plotW/(n-1);
+    const maxes=rows.map(s=>Math.max.apply(null,s.data));
+    const xAt=i=>padL+i*step; const yAt=(v,si)=>padT+plotH-(v/(maxes[si]||1))*plotH;
+    const off=this.state.chartOff||{}; const enabled=rows.map(s=>!off[s.id]);
+    const style=this.state.chartStyle; const hover=this.state.chartHover;
+    const barIdx=rows.findIndex(s=>s.id==='tx');
+    const f=(v)=>Math.round(v).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'\u202F');
+    const sval=(v,u)=>u==='₽'?f(v)+'\u202F₽':(u==='%'?v+'%':f(v));
+    const linePath=(s,si)=>s.data.map((v,i)=>`${i===0?'M':'L'} ${xAt(i).toFixed(1)} ${yAt(v,si).toFixed(1)}`).join(' ');
+    const areaPath=(s,si)=>`${linePath(s,si)} L ${xAt(n-1).toFixed(1)} ${(padT+plotH).toFixed(1)} L ${xAt(0).toFixed(1)} ${(padT+plotH).toFixed(1)} Z`;
+
+    const legend=RE('div',{style:{display:'flex',flexWrap:'wrap',gap:'8px',marginBottom:'9px'}}, rows.map(s=>{ const on=!off[s.id];
+      return RE('button',{key:s.id,onClick:()=>this.toggleSeries(s.id),style:{display:'inline-flex',alignItems:'center',gap:'7px',padding:'5px 9px',borderRadius:'999px',cursor:'pointer',background:on?(s.color+'1a'):'rgba(21,14,43,0.03)',border:'1px solid '+(on?s.color+'55':'rgba(21,14,43,0.1)'),opacity:on?1:0.5,transition:'all 160ms',fontFamily:"'Unbounded',sans-serif"}},
+        RE('span',{key:'d',style:{width:'8px',height:'8px',borderRadius:'2px',background:on?s.color:'rgba(21,14,43,0.3)',boxShadow:on?('0 0 8px '+s.color):'none'}}),
+        RE('span',{key:'l',style:{fontSize:'11px',fontWeight:500,color:on?'#150E2B':'rgba(21,14,43,0.5)',whiteSpace:'nowrap'}},s.short),
+        RE('span',{key:'v',style:{fontFamily:"'JetBrains Mono',monospace",fontSize:'9.5px',color:on?s.color:'rgba(21,14,43,0.35)',whiteSpace:'nowrap'}},sval(s.data[n-1],s.unit))
+      ); }));
+
+    const kids=[];
+    kids.push(RE('defs',{key:'defs'},rows.map(s=>RE('linearGradient',{key:s.id,id:'fcg-'+s.id,x1:'0',y1:'0',x2:'0',y2:'1'},RE('stop',{key:0,offset:'0%',stopColor:s.color,stopOpacity:0.34}),RE('stop',{key:1,offset:'100%',stopColor:s.color,stopOpacity:0.02})))));
+    [0,0.25,0.5,0.75,1].forEach(g=>kids.push(RE('line',{key:'g'+g,x1:padL,x2:W-padR,y1:padT+plotH*g,y2:padT+plotH*g,stroke:'rgba(21,14,43,0.07)',strokeWidth:1})));
+    if(style==='bars'&&enabled[barIdx]){ rows[barIdx].data.forEach((v,i)=>{ const bw=Math.max(3,step*0.5); const y=yAt(v,barIdx); kids.push(RE('rect',{key:'b'+i,x:xAt(i)-bw/2,y:y,width:bw,height:padT+plotH-y,rx:2,fill:rows[barIdx].color+'55',stroke:rows[barIdx].color,strokeWidth:1})); }); }
+    if(style==='area'){ rows.forEach((s,si)=>{ if(enabled[si]) kids.push(RE('path',{key:'a'+s.id,d:areaPath(s,si),fill:'url(#fcg-'+s.id+')'})); }); }
+    rows.forEach((s,si)=>{ if(!enabled[si])return; if(style==='bars'&&si===barIdx)return; const sw=style==='line'?2.4:2; kids.push(RE('path',{key:'l'+s.id,d:linePath(s,si),fill:'none',stroke:s.color,strokeWidth:sw,strokeLinejoin:'round',strokeLinecap:'round',style:{filter:'drop-shadow(0 0 5px '+s.color+'66)'}})); });
+    if(style==='line'){ rows.forEach((s,si)=>{ if(!enabled[si])return; s.data.forEach((v,i)=>{ if(i%3===0) kids.push(RE('circle',{key:'pt'+s.id+i,cx:xAt(i),cy:yAt(v,si),r:2.2,fill:s.color})); }); }); }
+    if(hover!=null){ kids.push(RE('line',{key:'hl',x1:xAt(hover),x2:xAt(hover),y1:padT,y2:padT+plotH,stroke:'rgba(21,14,43,0.28)',strokeWidth:1,strokeDasharray:'3 3'}));
+      rows.forEach((s,si)=>{ if(enabled[si]) kids.push(RE('circle',{key:'hd'+s.id,cx:xAt(hover),cy:yAt(s.data[hover],si),r:4,fill:'#FFFFFF',stroke:s.color,strokeWidth:2.2,style:{filter:'drop-shadow(0 0 5px '+s.color+')'}})); }); }
+    const xticks=DAYS.map((d,i)=>({d,i})).filter(o=>o.i%5===0||o.i===n-1);
+    xticks.forEach(t=>kids.push(RE('text',{key:'x'+t.i,x:xAt(t.i),y:H-6,textAnchor:'middle',style:{fontFamily:"'JetBrains Mono',monospace",fontSize:'11px',fill:'rgba(21,14,43,0.4)'}},t.d)));
+
+    const svg=RE('svg',{viewBox:`0 0 ${W} ${H}`,width:'100%',height:H,preserveAspectRatio:'none',style:{display:'block',overflow:'visible'}},kids);
+    const hx=hover!=null?(xAt(hover)/W*100):0;
+    const tip=hover!=null?RE('div',{style:{position:'absolute',top:'2px',left:`clamp(0px, calc(${hx}% - 80px), calc(100% - 168px))`,width:'168px',pointerEvents:'none',zIndex:5,padding:'9px 11px',borderRadius:'11px',background:'rgba(250,248,254,0.97)',border:'1px solid rgba(21,14,43,0.14)',backdropFilter:'blur(12px)',boxShadow:'0 16px 40px rgba(21,14,43,0.13)'}},
+      RE('div',{key:'h',style:{fontFamily:"'JetBrains Mono',monospace",fontSize:'9px',letterSpacing:'0.1em',textTransform:'uppercase',color:'rgba(21,14,43,0.5)',marginBottom:'7px'}},DAYS[hover]+' мая 2026'),
+      RE('div',{key:'b',style:{display:'flex',flexDirection:'column',gap:'5px'}},rows.map(s=>(!off[s.id])?RE('div',{key:s.id,style:{display:'flex',alignItems:'center',gap:'7px'}},
+        RE('span',{key:0,style:{width:'7px',height:'7px',borderRadius:'2px',background:s.color,boxShadow:'0 0 6px '+s.color,flex:'0 0 auto'}}),
+        RE('span',{key:1,style:{fontFamily:"'Unbounded',sans-serif",fontWeight:300,fontSize:'10.5px',color:'rgba(21,14,43,0.62)'}},s.short),
+        RE('span',{key:2,style:{marginLeft:'auto',fontFamily:"'JetBrains Mono',monospace",fontSize:'11px',fontWeight:600,color:'#150E2B',whiteSpace:'nowrap'}},sval(s.data[hover],s.unit))
+      ):null))
+    ):null;
+
+    const wrap=RE('div',{ref:(el)=>{this._chartWrap=el;},style:{position:'relative',width:'100%',cursor:'crosshair',touchAction:'pan-y'},onMouseMove:this._chartMove,onMouseLeave:()=>this.setChartHover(null),onTouchStart:this._chartMove,onTouchMove:this._chartMove,onTouchEnd:()=>this.setChartHover(null)},svg,tip);
+    return RE('div',null,legend,wrap);
+  }
+
+  renderVals(){
+    const C = { ink:'#150E2B', ink2:'#5B5470', ink3:'#9A93AE', mag:'#C2399F', maghot:'#C2399F', vio:'#6C30D6', org:'#E06A1E', mint:'#0FA877', deep:'#F4F1FA', page:'#F4F1FA', line:'rgba(21,14,43,0.09)' };
+    const S = this.state;
+
+    // ---------- NAV ----------
+    const navItems = [
+      {id:'overview', n:'01', t:'Обзор и концепция'},
+      {id:'market',   n:'02', t:'Анализ рынка'},
+      {id:'location', n:'03', t:'Районы и локация'},
+      {id:'layout',   n:'04', t:'Планировка зала'},
+      {id:'finance',  n:'05', t:'Финансовая модель'},
+      {id:'digital',  n:'06', t:'Цифровая экосистема'},
+    ];
+    const nav = navItems.map(it=>{
+      const active = S.section===it.id;
+      return {
+        id:it.id, n:it.n, t:it.t, onClick:()=>this.setSection(it.id),
+        rowStyle:{ display:'flex', alignItems:'center', gap:'12px', width:'100%', textAlign:'left', cursor:'pointer', border:'none', background: active?'rgba(21,14,43,0.06)':'transparent', borderRadius:'11px', padding:'11px 12px', position:'relative', transition:'background 180ms' },
+        barStyle:{ position:'absolute', left:'0', top:'18%', bottom:'18%', width:'3px', borderRadius:'3px', background: active?'linear-gradient(180deg,#C2399F,#6C30D6)':'transparent' },
+        numStyle:{ fontFamily:"'JetBrains Mono',monospace", fontSize:'11px', letterSpacing:'0.06em', color: active?C.maghot:'rgba(21,14,43,0.35)', minWidth:'18px' },
+        txtStyle:{ fontFamily:"'Unbounded',sans-serif", fontWeight: active?500:300, fontSize:'13.5px', color: active?'#150E2B':'rgba(21,14,43,0.6)' },
+      };
+    });
+
+    // ---------- panel show/hide ----------
+    const panelBase = { position:'absolute', inset:'0', height:'100%' };
+    const show = (id)=> S.section===id
+      ? Object.assign({}, panelBase, { display:'flex', alignItems:'center', justifyContent:'center', zIndex:10, opacity:1 })
+      : Object.assign({}, panelBase, { display:'none' });
+    // light doc panels get solid bg (added in their own markup); here just show/hide.
+
+    const is3D = (S.section==='overview'||S.section==='layout'||S.section==='finance'||S.section==='market'||S.section==='location');
+    const showHall = (S.section==='overview'||S.section==='layout'||S.section==='market'||S.section==='location');
+    const showFin = (S.section==='finance');
+    const stageStyle = { position:'absolute', inset:'0', zIndex:1, display:'block', pointerEvents: is3D?'auto':'none' };
+    const frameBase = { position:'absolute', inset:'0', width:'100%', height:'100%', border:'none', display:'block' };
+    const hallStyle = Object.assign({}, frameBase, { opacity: showHall?1:0, pointerEvents: showHall?'auto':'none', zIndex: showHall?2:1 });
+    const finStyle  = Object.assign({}, frameBase, { opacity: showFin?1:0, pointerEvents: showFin?'auto':'none', zIndex: showFin?2:1 });
+
+    // ---------- OVERVIEW ----------
+    const pillars = [
+      {k:'Мульти-формат', t:'5 падел · 4 бадминтон · 2 стола НТ — три потока спроса, одна инфраструктура', tone:C.maghot},
+      {k:'Цифра', t:'Автоматизация процессов и «безлюдные часы» — минимум ФОТ', tone:C.mint},
+      {k:'Комьюнити', t:'Турниры, рейтинги и кабинет спортсмена удерживают игроков', tone:C.org},
+    ];
+    const heroStats = [
+      {v:'251,6', u:'млн ₽', l:'Инвестиции (CAPEX)', tone:C.maghot},
+      {v:'183', u:'млн ₽', l:'Выручка, год 3', tone:C.maghot},
+      {v:'80', u:'млн ₽', l:'EBITDA год 3 · 43,8%', tone:C.mint},
+      {v:'3,95', u:'года', l:'Окупаемость от открытия', tone:C.org},
+      {v:'30,6', u:'%', l:'IRR с терм. стоимостью', tone:C.mint},
+      {v:'198', u:'млн ₽', l:'NPV @18%', tone:C.maghot},
+    ];
+
+    // ---------- LAYOUT ----------
+    const zoneList = [
+      {v:'overview', t:'Здание снаружи'},
+      {v:'cutaway',  t:'Разрез сверху'},
+      {v:'secondFloorTop', t:'Второй этаж'},
+      {v:'padelTop',     t:'Падел-холл'},
+      {v:'badmintonTop', t:'Бадминтон'},
+      {v:'ttTop',        t:'Наст. теннис'},
+      {v:'receptionTop', t:'Ресепшн'},
+      {v:'shopTop',      t:'Про-шоп'},
+      {v:'loungeTop',    t:'Лаундж'},
+      {v:'gymTop',       t:'ОФП-зал'},
+      {v:'lockerTop',    t:'Раздевалки'},
+      {v:'techTop',      t:'Техзона'},
+    ];
+    const zoneChip = (active)=>({ cursor:'pointer', fontFamily:"'Unbounded',sans-serif", fontWeight: active?500:300, fontSize:'12px', padding:'9px 14px', borderRadius:'999px', border:'1px solid '+(active?'transparent':'rgba(21,14,43,0.16)'), color: active?'#fff':'rgba(21,14,43,0.72)', background: active?'linear-gradient(135deg,#C2399F,#6C30D6)':'rgba(21,14,43,0.05)', boxShadow: active?'0 6px 18px rgba(194,57,159,0.4)':'none', backdropFilter:'blur(16px)', transition:'all 160ms' });
+    const zones = zoneList.map(z=>({ v:z.v, t:z.t, onClick:()=>this.setHallView(z.v), style: zoneChip(S.hallView===z.v) }));
+
+    const toggleBtn = (active)=>({ cursor:'pointer', display:'flex', alignItems:'center', gap:'8px', fontFamily:"'Unbounded',sans-serif", fontWeight:400, fontSize:'12px', color: active?'#150E2B':'rgba(21,14,43,0.6)', background:'rgba(21,14,43,0.06)', border:'1px solid rgba(21,14,43,0.14)', borderRadius:'999px', padding:'9px 15px', backdropFilter:'blur(18px)' });
+    const dot = (active, color)=>({ width:'8px', height:'8px', borderRadius:'50%', background: active?color:'rgba(21,14,43,0.25)', boxShadow: active?('0 0 10px '+color):'none' });
+
+    const buildSpecs = [
+      {v:'2 100 м²', l:'Площадь + антресоль 250'},
+      {v:'8 м', l:'Высота потолка'},
+      {v:'60 / 40', l:'Спорт / общие зоны'},
+      {v:'30+ лет', l:'Срок службы контура'},
+    ];
+    const schemeList = ['Малина','Фиолет','Классика'];
+    const schemeChip = (active)=>({ cursor:'pointer', fontFamily:"'JetBrains Mono',monospace", fontSize:'10px', letterSpacing:'0.04em', textTransform:'uppercase', padding:'7px 11px', borderRadius:'8px', border:'1px solid '+(active?'#C2399F':'rgba(21,14,43,0.16)'), color: active?'#150E2B':'rgba(21,14,43,0.6)', background: active?'rgba(194,57,159,0.25)':'rgba(21,14,43,0.04)' });
+    const schemes = schemeList.map(n=>({ t:n, onClick:()=>this.setScheme(n), style: schemeChip(S.scheme===n) }));
+
+    // ---------- FINANCE ----------
+    const FIN = {
+      opt:  { label:'Оптимистичный', tone:C.mint, rev:'133 / 217 / 252', eb:'106', margin:'48,9%', start:'4,1', open:'3,1', irr:'38,9%', npv:'351', note:'Оптимистичный: загрузка ×1,15, цены +5%, спрос ×1,15. Проект создаёт максимальную стоимость — NPV 351 млн ₽ при IRR почти 39%.' },
+      avg:  { label:'Средний (базовый)', tone:C.maghot, rev:'110 / 183 / 212', eb:'80', margin:'43,8%', start:'4,95', open:'3,95', irr:'30,6%', npv:'198', note:'Базовый сценарий заложен в модель. EBITDA выходит на 44% к 3-му году, проект окупается за 3,95 года от открытия и создаёт ≈198 млн ₽ стоимости при ставке 18%.' },
+      pess: { label:'Пессимистичный', tone:C.org, rev:'84 / 140 / 162', eb:'47', margin:'33,2%', start:'7,1', open:'6,1', irr:'18,2%', npv:'2,7', note:'Пессимистичный: загрузка ×0,80, цены −5%, спрос ×0,80. Проект возвращает деньги (NPV ≈ 0), но почти не создаёт стоимости при ставке 18% — нижняя граница риска.' },
+    };
+    const finActive = FIN[S.scenario] || FIN.avg;
+    const scenKeys = [['opt','Оптимист.'],['avg','Базовый'],['pess','Пессимист.']];
+    const scenChip = (active, tone)=>({ cursor:'pointer', display:'flex', alignItems:'center', gap:'9px', fontFamily:"'Unbounded',sans-serif", fontWeight: active?500:300, fontSize:'13px', padding:'11px 18px', borderRadius:'12px', border:'1px solid '+(active?'transparent':'rgba(21,14,43,0.16)'), color: active?'#150E2B':'rgba(21,14,43,0.65)', background: active?'rgba(21,14,43,0.1)':'rgba(21,14,43,0.04)', backdropFilter:'blur(18px)', boxShadow: active?('inset 0 0 0 1px '+tone+', 0 6px 20px rgba(21,14,43,0.10)'):'none' });
+    const scenBtns = scenKeys.map(([k,label])=>({ k, label, onClick:()=>this.setScenario(k), style: scenChip(S.scenario===k, FIN[k].tone), dot:{ width:'9px', height:'9px', borderRadius:'50%', background:FIN[k].tone, boxShadow: S.scenario===k?('0 0 10px '+FIN[k].tone):'none' } }));
+    const finCards = [
+      {l:'Выручка год 1/3/5, млн ₽', v:finActive.rev, u:'', tone:'#150E2B'},
+      {l:'EBITDA год 3, млн ₽', v:finActive.eb, u:'· '+finActive.margin, tone:finActive.tone},
+      {l:'Окупаемость от старта', v:finActive.start, u:'лет', tone:'#150E2B'},
+      {l:'Окупаемость от открытия', v:finActive.open, u:'лет', tone:finActive.tone},
+      {l:'IRR с терм. стоимостью', v:finActive.irr, u:'', tone:C.mint},
+      {l:'NPV @18% с ТС, млн ₽', v:finActive.npv, u:'', tone:finActive.tone},
+    ];
+
+    // ---------- MARKET ----------
+    const SPORTS = {
+      padel:{ title:'Падел', tag:'Драйвер выручки и бренда', tone:C.maghot,
+        metrics:[{v:'×4',l:'рост кортов РФ за 2025'},{v:'700',l:'кортов в РФ, нач. 2026'},{v:'61%',l:'готовы попробовать · ВЦИОМ'}],
+        deficit:'×2–4', price:'3 290 ₽/час', aud:'30–45 · «комфорт+»',
+        bullets:['СПб — топ-2 рынок: 12–15 клубов, ~60–70 кортов на 5,6 млн жителей','Оборот рынка РФ удвоился за год: 3,19 → 6,2 млрд ₽','Прогноз ФПР-2030 — 2 135 кортов (+512 тыс. регулярных игроков)'] },
+      badminton:{ title:'Бадминтон', tag:'Лояльное комьюнити, вечерняя загрузка', tone:C.vio,
+        metrics:[{v:'+56%',l:'спрос на тренеров · Авито'},{v:'+73%',l:'интерес к крытым залам'},{v:'11%',l:'взрослых играют изредка'}],
+        deficit:'×3–6', price:'700–1 800 ₽/час', aud:'25–45 · семьи и офис',
+        bullets:['Качественных частных центров в спальных районах почти нет','Каждый новый зал создаёт локальный рынок «с нуля»','Многолетняя лояльность без хайп-рисков падела'] },
+      tt:{ title:'Настольный теннис', tag:'Якорь загрузки и удержания', tone:C.mint,
+        metrics:[{v:'974,7',l:'тыс. занимающихся · 1-ФК'},{v:'95%',l:'удержание игроков'},{v:'×2–3',l:'дефицит в спальных р-нах'}],
+        deficit:'×2–3', price:'350–1 300 ₽/стол', aud:'35–65 + дети + 55+',
+        bullets:['Закрывает утренние и дневные часы, пустующие у падела','Самая развитая любительская турнирная экосистема','Минимальный чек входа — 125–250 ₽ с человека'] },
+      tennis:{ title:'Большой теннис', tag:'Внешний донор аудитории', tone:C.org,
+        metrics:[{v:'150+',l:'кортов в СПб — все загружены'},{v:'«дефицит»',l:'оценка федерации · ФТР'},{v:'×2–4',l:'дороже падела на игрока'}],
+        deficit:'перегрев', price:'1 500–3 900 ₽/час', aud:'25–55 · премиум',
+        bullets:['«Почти все наши паделисты — бывшие теннисисты»','3 падел-корта помещаются на пятне одного теннисного','Готовый навык ракетки и привычка к ценам 2–4 тыс. ₽'] },
+    };
+    const sportKeys = [['padel','Падел'],['badminton','Бадминтон'],['tt','Наст. теннис'],['tennis','Теннис']];
+    const sportTab = (active, tone)=>({ cursor:'pointer', display:'flex', alignItems:'center', gap:'10px', fontFamily:"'Unbounded',sans-serif", fontWeight: active?500:300, fontSize:'15px', padding:'13px 24px', borderRadius:'999px', border:'1px solid '+(active?'transparent':'rgba(21,14,43,0.18)'), color: active?'#fff':'rgba(21,14,43,0.72)', background: active?('linear-gradient(135deg,'+tone+',#6C30D6)'):'rgba(21,14,43,0.07)', boxShadow: active?('0 8px 24px '+tone+'55'):'none', backdropFilter:'blur(16px)', transition:'all 160ms' });
+    const sportTabs = sportKeys.map(([k,t])=>({ k, t, onClick:()=>this.setMarketTab(k), style: sportTab(S.marketTab===k, SPORTS[k].tone), dot:{ width:'8px', height:'8px', borderRadius:'50%', background: S.marketTab===k?'#fff':SPORTS[k].tone, boxShadow: S.marketTab===k?'0 0 8px rgba(21,14,43,0.8)':'none' } }));
+    const _as = SPORTS[S.marketTab] || SPORTS.padel;
+    const activeSport = Object.assign({}, _as, { metrics: _as.metrics.map(m=>Object.assign({}, m, { tone:_as.tone })) });
+
+    // ---------- LOCATION ----------
+    const CRIT = ['Ёмкость','Рост','Платёжесп.','Дефицит','Конкур.','Транспорт'];
+    const DISTRICTS = [
+      {name:'Выборгский (север)', s:[5,5,4,4,4,4], adults:'~415 тыс.', courts:'1', note:'Парнас и Парголово — взрывной рост, лидер по числу строящихся новостроек.'},
+      {name:'Невский', s:[5,3,3,5,5,4], adults:'~430 тыс.', courts:'0', note:'Оба берега Невы, крупные жилмассивы — ни одного падел-корта.'},
+      {name:'Красносельский', s:[4,4,2,5,5,3], adults:'~330 тыс.', courts:'0', note:'Молодые семьи, первое жильё; спрос обслуживается с нуля.'},
+      {name:'Приморский', s:[5,4,5,3,2,3], adults:'~560 тыс.', courts:'20–22', note:'№1 по населению, но падел уже кластеризован — высокая конкуренция.'},
+      {name:'Кудрово + восток КАД', s:[2,4,3,5,4,4], adults:'~140 тыс.', courts:'0', note:'Прямой съезд с КАД, молодое население, метро не скоро.'},
+      {name:'Мурино / Девяткино', s:[2,5,2,5,5,2], adults:'~120 тыс.', courts:'0', note:'×15 за 15 лет, инфраструктурный голод, тяжёлые автовыезды.'},
+      {name:'Шушары / Славянка', s:[2,5,2,5,5,2], adults:'~195 тыс.', courts:'0', note:'№1 по вводу жилья 2025, «одна дорога», объектов нет.'},
+      {name:'Красногвардейский', s:[3,4,3,4,2,4], adults:'~290 тыс.', courts:'9', note:'№2 по вводу жилья; здесь работает аналог — мультиформат ВМЯЧ.'},
+      {name:'Калининский', s:[4,2,3,3,3,4], adults:'~415 тыс.', courts:'6', note:'Старый жилфонд + Гражданка, умеренный спрос.'},
+      {name:'Московский', s:[3,3,4,3,2,4], adults:'~280 тыс.', courts:'5', note:'Платёжеспособный офисный пояс, медленный рост.'},
+      {name:'Фрунзенский', s:[4,1,2,3,3,3], adults:'~310 тыс.', courts:'~3–4', note:'Население убывает, аудитория старше.'},
+      {name:'Кировский', s:[3,1,2,4,3,3], adults:'~265 тыс.', courts:'~3–4', note:'Промышленный пояс, стагнация.'},
+    ];
+    const maxScore = 30;
+    const districtRows = DISTRICTS.map(d=>{
+      const total = d.s.reduce((a,b)=>a+b,0); const active = S.district===d.name;
+      return { name:d.name, total, active, onClick:()=>this.setDistrict(d.name),
+        rowStyle:{ cursor:'pointer', display:'flex', alignItems:'center', gap:'12px', padding:'8px 12px', borderRadius:'10px', background: active?'#fff':'transparent', border:'1px solid '+(active?'rgba(108,48,214,0.35)':'transparent'), boxShadow: active?'0 4px 16px rgba(108,48,214,0.12)':'none', transition:'all 150ms' },
+        nameStyle:{ fontFamily:"'Unbounded',sans-serif", fontWeight: active?500:300, fontSize:'12.5px', color: active?C.ink:C.ink2, flex:'1', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' },
+        trackStyle:{ width:'92px', height:'7px', borderRadius:'7px', background:'rgba(21,14,43,0.08)', overflow:'hidden', flex:'0 0 auto' },
+        fillStyle:{ width:(total/maxScore*100)+'%', height:'100%', borderRadius:'7px', background: active?'linear-gradient(90deg,#C2399F,#6C30D6)':'rgba(108,48,214,0.4)' },
+        scoreStyle:{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'20px', color: active?C.vio:C.ink3, minWidth:'30px', textAlign:'right' } };
+    });
+    const ad = DISTRICTS.find(d=>d.name===S.district) || DISTRICTS[0];
+    const locVerdict = {
+      'Выборгский (север)':'Рост и ёмкость при 1 корте на 415 тыс. — наш выбор',
+      'Невский':'430 тыс. взрослых и ноль падел-кортов — чистое поле',
+      'Красносельский':'Молодые семьи, спрос обслуживается с нуля',
+      'Шушары / Славянка':'№1 по вводу жилья, ракеточных объектов нет',
+    };
+    const locShort = { 'Выборгский (север)':'Выборгский', 'Невский':'Невский', 'Красносельский':'Красносельский', 'Шушары / Славянка':'Шушары' };
+    const activeLoc = {
+      name: ad.name, short: locShort[ad.name] || ad.name, adults: ad.adults, courts: ad.courts, note: ad.note,
+      total: ad.s.reduce((a,b)=>a+b,0), verdict: locVerdict[ad.name] || ad.note,
+      crit: CRIT.map((c,i)=>({ l:c, v:ad.s[i], barStyle:{ display:'block', width:(ad.s[i]/5*100)+'%', height:'100%', borderRadius:'6px', background:'linear-gradient(90deg,#C2399F,#6C30D6)' } })),
+    };
+    const locKeys = [['Выборгский (север)','Выборгский'],['Невский','Невский'],['Красносельский','Красносельский'],['Шушары / Славянка','Шушары']];
+    const locTone = { 'Выборгский (север)':C.maghot, 'Невский':C.vio, 'Красносельский':C.mint, 'Шушары / Славянка':C.org };
+    const locTabs = locKeys.map(([k,t])=>({ k, t, onClick:()=>this.setDistrict(k), style: sportTab(S.district===k, locTone[k]), dot:{ width:'8px', height:'8px', borderRadius:'50%', background: S.district===k?'#fff':locTone[k], boxShadow: S.district===k?'0 0 8px rgba(21,14,43,0.8)':'none' } }));
+
+    // ---------- DIGITAL (feature cards for investors) ----------
+    const cyan='#1B97C4', pink='#DD3F8C';
+    const fmt=(n)=>Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'\u202F');
+    const ic=(name,size,color,sw)=>this.icon(name,size,color,sw);
+
+    const digValueChips = [
+      {k:'−1,0–1,8 млн', t:'ФОТ/год · безлюдные часы', tone:C.mint},
+      {k:'6 контуров', t:'в одном ядре данных', tone:C.maghot},
+      {k:'SaaS-опцион', t:'тираж на второй объект', tone:cyan},
+    ];
+
+    // header card icons
+    const finIcon=ic('activity',18,'#C2399F',2);
+    const idleIcon=ic('clock',18,'#0FA877',2);
+    const cabIcon=ic('users',17,'#C2399F',2);
+    const tourIcon=ic('award',17,'#E06A1E',2);
+    const coreIcon=ic('layout-dashboard',17,'#6C30D6',2);
+    const trackerIco=ic('activity',13,'#0FA877',2);
+
+    // Card 1 · Finance KPI chips + interactive chart
+    const finKpiChips=[
+      {label:'Выручка', value:'1,25', unit:'млн', delta:'+12%', deltaColor:C.mint, tone:C.mag},
+      {label:'Оборот сегодня', value:fmt(S.turnover), unit:'₽', delta:'+14%', deltaColor:C.mint, tone:'#150E2B'},
+      {label:'Маржа', value:'25', unit:'%', delta:'+2пп', deltaColor:C.mint, tone:C.vio},
+      {label:'Заполн.', value:'78', unit:'%', delta:'+5пп', deltaColor:C.mint, tone:cyan},
+    ];
+    const csList=[['area','Площади'],['line','Линии'],['bars','Бары']];
+    const csStyle=(active)=>({ cursor:'pointer', border:'none', borderRadius:'6px', padding:'5px 9px', fontFamily:"'Unbounded',sans-serif", fontWeight: active?500:300, fontSize:'9.5px', color: active?'#fff':'rgba(21,14,43,0.5)', background: active?'rgba(21,14,43,0.12)':'transparent' });
+    const chartStyleBtns=csList.map(([id,label])=>({ label, onClick:()=>this.setChartStyle(id), style: csStyle(S.chartStyle===id) }));
+    const finChart=this.buildChart(108);
+
+    // Card 2 · Безлюдные часы — automation toggles + live касса
+    const autoData=[
+      {label:'Доступ по QR из брони', icon:'qr'},
+      {label:'Свет и климат по расписанию', icon:'bulb'},
+      {label:'Табло занятости кортов', icon:'monitor'},
+    ];
+    const autoChips=autoData.map(a=>({ label:a.label, ico:ic(a.icon,13,'#0FA877',2) }));
+    const feed=[
+      {name:'Кирилл Кузьмин', sum:'3 800 ₽'},
+      {name:'Анжелика Маркина', sum:'9 500 ₽'},
+      {name:'Иван Фомичев', sum:'1 900 ₽'},
+      {name:'Яна Чигина', sum:'990 ₽'},
+      {name:'Мария Горбатова', sum:'1 900 ₽'},
+    ];
+    const kassaLast=feed[(S.feedIdx||0)%feed.length];
+
+    // Card 3 · Кабинет спортсмена — live plan
+    const planData=[
+      {text:'Разминка и работа у стенки', st:'done'},
+      {text:'Подача · 40 повторений', st:'done'},
+      {text:'Игровой блок · приём подачи', st:'active'},
+      {text:'Заминка и растяжка', st:'todo'},
+    ];
+    const planItems=planData.map(p=>{ const done=p.st==='done', active=p.st==='active';
+      return { text:p.text, mark: done?ic('check',11,'#FFFFFF',2.6):'',
+        markStyle:{ width:'18px', height:'18px', borderRadius:'50%', flex:'0 0 auto', display:'flex', alignItems:'center', justifyContent:'center', background: done?'#0FA877':'transparent', border:'1px solid '+(done?'#0FA877':(active?'#C2399F':'rgba(21,14,43,0.2)')), boxShadow: active?'0 0 8px rgba(194,57,159,0.6)':'none' },
+        txtStyle:{ fontFamily:"'Unbounded',sans-serif", fontWeight: active?500:300, fontSize:'10.5px', color: done?'rgba(21,14,43,0.42)':(active?'#150E2B':'rgba(21,14,43,0.7)'), textDecoration: done?'line-through':'none' } };
+    });
+    const planProgress=Math.round(planData.filter(p=>p.st==='done').length/planData.length*100)+'%';
+
+    // Card 4 · Турниры и рейтинги — ladder
+    const playerData=[
+      {init:'АЛ',color:C.mag,name:'Артём Лебедев',rating:'1842'},
+      {init:'МГ',color:cyan,name:'Мария Горбатова',rating:'1788'},
+      {init:'КК',color:C.org,name:'Кирилл Кузьмин',rating:'1731'},
+      {init:'ПЖ',color:C.mint,name:'Полина Жукова',rating:'1690'},
+    ];
+    const medals=['#C99A2E','#8A8FA6','#B0682E'];
+    const avatar=(color,size)=>({ width:size+'px', height:size+'px', borderRadius:'50%', flex:'0 0 auto', display:'flex', alignItems:'center', justifyContent:'center', background:color+'2e', border:'1px solid '+color+'55', color:color, fontFamily:"'Unbounded',sans-serif", fontWeight:600, fontSize:(size*0.38)+'px' });
+    const playerRows=playerData.map((p,i)=>({ rank:String(i+1), init:p.init, name:p.name, rating:p.rating, tone:p.color, avStyle:avatar(p.color,24),
+      rankStyle:{ width:'14px', textAlign:'center', fontFamily:"'Bebas Neue',sans-serif", fontSize:'15px', color: medals[i]||'rgba(21,14,43,0.5)', textShadow: medals[i]?('0 0 7px '+medals[i]+'88'):'none', flex:'0 0 auto' } }));
+
+    // Card 5 · 6 контуров
+    const stratMap={'Покупка':{c:C.vio,b:'ПОК'},'Гибрид':{c:C.org,b:'ГИБ'},'Своя':{c:C.mint,b:'СВОЯ'}};
+    const layerData=[
+      {name:'Клиентский контур', sol:'Viva CRM · брони, оплаты', strat:'Покупка'},
+      {name:'Товарный контур', sol:'МойСклад · pro-shop, кафе', strat:'Покупка'},
+      {name:'Инфраструктурный', sol:'СКУД · табло · свет', strat:'Гибрид'},
+      {name:'Спортивный контур', sol:'Кабинет спортсмена', strat:'Своя'},
+      {name:'Интеграционное ядро', sol:'Шина данных, сценарии', strat:'Своя'},
+      {name:'Аналитика · BI', sol:'Юнит-экономика, retention', strat:'Гибрид'},
+    ];
+    const layerRows=layerData.map(l=>{ const m=stratMap[l.strat]; return { name:l.name, sol:l.sol, color:m.c, badge:m.b,
+      badgeStyle:{ fontFamily:"'JetBrains Mono',monospace", fontSize:'7.5px', fontWeight:600, letterSpacing:'0.05em', padding:'3px 7px', borderRadius:'999px', color:'#fff', background:m.c, whiteSpace:'nowrap', flex:'0 0 auto' } }; });
+
+    // strategy tags
+    const tagData=[{label:'Сократить ФОТ'},{label:'Независимость от исполнителей'},{label:'Премиальность и удержание'},{label:'SaaS-опцион на второй объект',hot:true}];
+    const digTags=tagData.map(t=>({ label:t.label, style:{ fontFamily:"'JetBrains Mono',monospace", fontSize:'9.5px', letterSpacing:'0.06em', textTransform:'uppercase', padding:'8px 14px', borderRadius:'999px', color: t.hot?'#fff':'rgba(21,14,43,0.7)', background: t.hot?'linear-gradient(135deg,#C2399F,#6C30D6)':'rgba(21,14,43,0.05)', border: t.hot?'1px solid transparent':'1px solid rgba(21,14,43,0.12)', boxShadow: t.hot?'0 6px 18px rgba(194,57,159,0.3)':'none' } }));
+
+    return {
+      nav,
+      stageStyle, hallStyle, finStyle,
+      sportTabs, activeSport,
+      locTabs, activeLoc,
+      // digital (feature cards)
+      digValueChips,
+      finIcon, idleIcon, cabIcon, tourIcon, coreIcon, trackerIco,
+      finKpiChips, chartStyleBtns, finChart,
+      autoChips, kassaLast,
+      planItems, planProgress, playerRows, layerRows, digTags,
+      pOverview: show('overview'), pLayout: show('layout'), pFinance: show('finance'),
+      pMarket: show('market'), pLocation: show('location'), pDigital: show('digital'),
+      // overview
+      pillars, heroStats,
+      // layout
+      zones, buildSpecs, schemes,
+      toggleRoof:this.toggleRoof, toggleMezz:this.toggleMezz, toggleWalk:this.toggleWalk,
+      roofBtnStyle: toggleBtn(S.roof), mezzBtnStyle: toggleBtn(S.mezz), walkBtnStyle: toggleBtn(S.walk),
+      roofDot: dot(S.roof, C.maghot), mezzDot: dot(S.mezz, C.vio), walkDot: dot(S.walk, C.mint),
+      // finance
+      scenBtns, finCards, finActive,
+    };
+  }
+}
+</script>
+
+<div id="nb-rotate" aria-hidden="true">
+  <svg class="nb-rot-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="7" width="13" height="14" rx="2"/>
+    <path d="M16 4h3a2 2 0 0 1 2 2v3"/>
+    <path d="M19 4l2 2-2 2"/>
+    <line x1="9.5" y1="18" x2="9.5" y2="18"/>
+  </svg>
+  <div class="nb-rot-mark">НАЙТ<span>|</span></div>
+  <div class="nb-rot-title">Поверните устройство</div>
+  <div class="nb-rot-sub">Презентация рассчитана<br>на горизонтальный экран</div>
+</div>
 </body>
 </html>

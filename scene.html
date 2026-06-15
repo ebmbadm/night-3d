@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Найт — 3D зал</title>
+<link rel="stylesheet" href="ds/colors_and_type.css">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
+  body {
+    font-family: var(--font-text); color: var(--fg-1);
+    background:
+      radial-gradient(120% 95% at 80% -12%, rgba(194,57,159,0.10) 0%, rgba(108,48,214,0.07) 40%, rgba(244,241,250,0) 74%),
+      radial-gradient(95% 75% at 6% 110%, rgba(108,48,214,0.08) 0%, rgba(244,241,250,0) 62%),
+      #EDE7F6;
+  }
+  #stage { position: absolute; inset: 0; }
+  #stage canvas { display: block; }
+  .grain {
+    position: absolute; inset: 0; pointer-events: none; z-index: 5;
+    opacity: 0.10; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .hint {
+    position: absolute; bottom: 14px; right: 18px; z-index: 10;
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em;
+    color: rgba(21,14,43,0.5); text-align: right; text-transform: uppercase; white-space: nowrap;
+    pointer-events: none;
+  }
+  /* прицел + walkpad из прототипа (компактно) */
+  .crosshair { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:8; width:22px; height:22px; pointer-events:none; opacity:0.85; }
+  .crosshair::before, .crosshair::after { content:""; position:absolute; background:rgba(255,255,255,0.9); box-shadow:0 0 6px rgba(221,88,197,0.9); }
+  .crosshair::before { left:50%; top:3px; width:1.5px; height:16px; transform:translateX(-50%); }
+  .crosshair::after { top:50%; left:3px; height:1.5px; width:16px; transform:translateY(-50%); }
+  .walkpad {
+    position:absolute; left:50%; bottom:18px; transform:translateX(-50%); z-index:10;
+    display:flex; align-items:flex-end; gap:12px; padding:11px 13px;
+    background:var(--glass-bg); border:1px solid var(--glass-border);
+    backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);
+    border-radius:var(--radius-lg); box-shadow:0 0 40px rgba(221,88,197,0.18);
+  }
+  .walkpad[hidden]{ display:none; }
+  .wp-group{ display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .wp-cap{ font-family:var(--font-mono); font-size:9px; letter-spacing:0.1em; color:var(--fg-3); text-transform:uppercase; }
+  .wp-btn{ display:flex; align-items:center; justify-content:center; width:42px; height:36px; font-size:15px; line-height:1; font-family:var(--font-text); color:var(--fg-1); background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); border-radius:var(--radius-md); cursor:pointer; user-select:none; -webkit-user-select:none; touch-action:none; transition:filter 120ms var(--ease-out), transform 120ms var(--ease-out), background 120ms; }
+  .wp-btn:hover{ filter:brightness(1.18); }
+  .wp-btn.act, .wp-btn:active{ background:rgba(221,88,197,0.28); border-color:var(--night-magenta); box-shadow:var(--glow-magenta); transform:translateY(1px); }
+  .wp-move{ display:grid; grid-template-columns:repeat(3,42px); grid-template-rows:36px 36px; gap:5px; }
+  .wp-move .wp-cap{ grid-column:1/-1; order:-1; }
+  .wp-move [data-move="f"]{ grid-column:2; grid-row:1; }
+  .wp-move [data-move="l"]{ grid-column:1; grid-row:2; }
+  .wp-move [data-move="b"]{ grid-column:2; grid-row:2; }
+  .wp-move [data-move="r"]{ grid-column:3; grid-row:2; }
+  .wp-stack{ display:flex; gap:5px; }
+  .wp-sep{ width:1px; align-self:stretch; background:rgba(255,255,255,0.1); margin:4px 2px; }
+  .wp-exit{ width:auto; padding:0 14px; font-size:12px; font-weight:500; }
+</style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="grain"></div>
+  <div class="hint">ЛКМ — вращение · колесо — зум · ПКМ — панорама</div>
+  <div class="crosshair" id="crosshair" hidden></div>
+  <div class="walkpad" id="walkpad" hidden>
+    <div class="wp-group wp-move">
+      <span class="wp-cap">Шаг</span>
+      <button class="wp-btn" type="button" data-move="f" aria-label="Вперёд">▲</button>
+      <button class="wp-btn" type="button" data-move="l" aria-label="Влево">◀</button>
+      <button class="wp-btn" type="button" data-move="b" aria-label="Назад">▼</button>
+      <button class="wp-btn" type="button" data-move="r" aria-label="Вправо">▶</button>
+    </div>
+    <div class="wp-sep"></div>
+    <div class="wp-group"><span class="wp-cap">Обзор</span>
+      <div class="wp-stack">
+        <button class="wp-btn" type="button" data-move="tl">↺</button>
+        <button class="wp-btn" type="button" data-move="tr">↻</button>
+      </div>
+    </div>
+    <div class="wp-sep"></div>
+    <div class="wp-group"><span class="wp-cap">Высота</span>
+      <div class="wp-stack">
+        <button class="wp-btn" type="button" data-move="up">⤒</button>
+        <button class="wp-btn" type="button" data-move="down">⤓</button>
+      </div>
+    </div>
+    <div class="wp-sep"></div>
+    <div class="wp-group"><span class="wp-cap">WASD · мышь</span>
+      <button class="wp-btn wp-exit" type="button" id="walkExit">Выйти</button>
+    </div>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module" src="js/night-main.js"></script>
+
+  <script>
+    (function () {
+      // walkpad wiring (self-contained walk UX)
+      const walkpad = document.getElementById('walkpad');
+      const crosshair = document.getElementById('crosshair');
+      const hint = document.querySelector('.hint');
+      function setWalkUI(on) {
+        walkpad.hidden = !on; crosshair.hidden = !on;
+        if (hint) hint.style.opacity = on ? '0' : '';
+      }
+      document.addEventListener('night:walk', (e) => setWalkUI(!!e.detail));
+      document.getElementById('walkExit').addEventListener('click', () => { if (window.NightApp) window.NightApp.stopWalk(); });
+      document.querySelectorAll('#walkpad .wp-btn[data-move]').forEach((b) => {
+        const key = b.getAttribute('data-move');
+        const on = (e) => { e.preventDefault(); if (window.NightApp) window.NightApp.setMove(key, true); b.classList.add('act'); };
+        const off = () => { if (window.NightApp) window.NightApp.setMove(key, false); b.classList.remove('act'); };
+        b.addEventListener('pointerdown', on);
+        b.addEventListener('pointerup', off);
+        b.addEventListener('pointerleave', off);
+        b.addEventListener('pointercancel', off);
+      });
+
+      // bridge: parent → scene commands (same-origin direct calls also work)
+      window.addEventListener('message', (e) => {
+        const m = e.data; if (!m || m.ns !== 'night' || !window.NightApp) return;
+        const app = window.NightApp;
+        try {
+          if (m.cmd === 'flyTo') app.flyTo(m.name, m.animate !== false);
+          else if (m.cmd === 'setRoof') app.setRoof(!!m.value);
+          else if (m.cmd === 'setMezz') app.setMezz(!!m.value);
+          else if (m.cmd === 'setScheme') app.setScheme(m.value);
+          else if (m.cmd === 'setGlow') app.setGlow(m.value);
+          else if (m.cmd === 'toggleWalk') app.toggleWalk();
+          else if (m.cmd === 'stopWalk') app.stopWalk();
+          else if (m.cmd === 'setActive') app.setRenderEnabled(m.value !== false);
+        } catch (err) { /* noop */ }
+      });
+      // notify parent when ready + relay roof/mezz/walk state changes upward
+      function up(type, detail) {
+        try { window.parent && window.parent.postMessage({ ns: 'night-evt', type, detail }, '*'); } catch (e) {}
+      }
+      document.addEventListener('night:roof', (e) => up('roof', !!e.detail));
+      document.addEventListener('night:mezz', (e) => up('mezz', !!e.detail));
+      document.addEventListener('night:walk', (e) => up('walk', !!e.detail));
+      // poll for NightApp readiness
+      let tries = 0;
+      const iv = setInterval(() => {
+        if (window.NightApp) { clearInterval(iv); up('ready', true); }
+        else if (++tries > 200) clearInterval(iv);
+      }, 50);
+    })();
+  </script>
+</body>
+</html>
