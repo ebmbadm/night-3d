@@ -982,7 +982,7 @@ class Component extends DCLogic {
       finKpiChips, chartStyleBtns, finChart,
       autoChips, kassaLast,
       planItems, planProgress, playerRows, layerRows, digTags,
-      pOverview: show('overview'), pLayout: show('layout'), pFinance: show('finance'),
+      pOverview: show('overview'), pLayout: (S.walk ? Object.assign({}, show('layout'), {pointerEvents:'none'}) : show('layout')), pFinance: show('finance'),
       pMarket: show('market'), pLocation: show('location'), pDigital: show('digital'),
       // overview
       pillars, heroStats,
