@@ -174,8 +174,8 @@
           </sc-for>
         </div>
 
-        <!-- spec card bottom-left -->
-        <div style="position:relative; z-index:1; margin-top:auto; display:flex; gap:14px; align-items:flex-end; pointer-events:none;">
+        <!-- spec card bottom-left (скрыта в режиме прогулки, чтобы не перекрывать walkpad сцены) -->
+        <div style="{{ layoutSpecRow }}">
           <div style="pointer-events:auto; padding:18px 22px; border-radius:16px; background:rgba(244,241,250,0.55); border:1px solid rgba(21,14,43,0.13); backdrop-filter:blur(22px); display:flex; gap:26px;">
             <sc-for list="{{ buildSpecs }}" as="b" hint-placeholder-count="4">
               <div>
@@ -988,6 +988,7 @@ class Component extends DCLogic {
       pillars, heroStats,
       // layout
       zones, buildSpecs, schemes,
+      layoutSpecRow: { position:'relative', zIndex:1, marginTop:'auto', display: S.walk?'none':'flex', gap:'14px', alignItems:'flex-end', pointerEvents:'none' },
       toggleRoof:this.toggleRoof, toggleMezz:this.toggleMezz, toggleWalk:this.toggleWalk,
       roofBtnStyle: toggleBtn(S.roof), mezzBtnStyle: toggleBtn(S.mezz), walkBtnStyle: toggleBtn(S.walk),
       roofDot: dot(S.roof, C.maghot), mezzDot: dot(S.mezz, C.vio), walkDot: dot(S.walk, C.mint),
