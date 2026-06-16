@@ -99,6 +99,16 @@
         </span>
       </a>
 
+      <a class="nb-xls-btn" href="https://view.officeapps.live.com/op/view.aspx?src=https%3A%2F%2Febmbadm.github.io%2Fnight-3d%2Fassets%2Fbizplan.docx" target="_blank" rel="noopener noreferrer">
+        <span style="width:32px; height:32px; flex:0 0 auto; border-radius:9px; display:flex; align-items:center; justify-content:center; background:rgba(108,48,214,0.16); border:1px solid rgba(108,48,214,0.42);">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6C30D6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h8M8 9h2"/></svg>
+        </span>
+        <span style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+          <span style="font-family:'Unbounded',sans-serif; font-weight:500; font-size:12.5px; color:#150E2B;">Бизнес-план · Word</span>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(21,14,43,0.5);">Просмотр документа</span>
+        </span>
+      </a>
+
       <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:0.12em; color:rgba(21,14,43,0.3); text-transform:uppercase; margin-top:14px; text-align:center;">Инвест-меморандум · 2026</div>
     </div>
   </aside>
@@ -158,14 +168,14 @@
         </div>
 
         <!-- zone buttons -->
-        <div style="display:flex; flex-wrap:wrap; gap:7px; margin-top:28px; max-width:560px; pointer-events:auto;">
+        <div style="position:relative; z-index:5; display:flex; flex-wrap:wrap; gap:7px; margin-top:28px; max-width:560px; pointer-events:auto;">
           <sc-for list="{{ zones }}" as="z" hint-placeholder-count="11">
             <button type="button" onClick="{{ z.onClick }}" style="{{ z.style }}">{{ z.t }}</button>
           </sc-for>
         </div>
 
         <!-- spec card bottom-left -->
-        <div style="margin-top:auto; display:flex; gap:14px; align-items:flex-end; pointer-events:none;">
+        <div style="position:relative; z-index:1; margin-top:auto; display:flex; gap:14px; align-items:flex-end; pointer-events:none;">
           <div style="pointer-events:auto; padding:18px 22px; border-radius:16px; background:rgba(244,241,250,0.55); border:1px solid rgba(21,14,43,0.13); backdrop-filter:blur(22px); display:flex; gap:26px;">
             <sc-for list="{{ buildSpecs }}" as="b" hint-placeholder-count="4">
               <div>
