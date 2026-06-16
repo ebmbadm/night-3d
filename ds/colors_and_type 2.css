@@ -1,0 +1,211 @@
+/* ============================================================
+   Найт — Colors & Type tokens
+   Design system for Night Badminton Club
+   ============================================================ */
+
+/* ---------- Font imports (Google Fonts — see README for substitution note) ---------- */
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Unbounded:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* ====================================================
+     COLOR TOKENS
+     ==================================================== */
+
+  /* Core brand */
+  --night-magenta:        #DD58C5;  /* primary — малиновый */
+  --night-magenta-hot:    #F062D8;  /* hover / glow */
+  --night-magenta-deep:   #A53391;  /* pressed */
+  --night-violet:         #7238E6;  /* secondary brand */
+  --night-violet-deep:    #4A1DAD;  /* pressed / deep accent */
+
+  /* Neon accents — только как HIGHLIGHTS, не как surface */
+  --neon-orange:          #FF8A3D;
+  --neon-mint:            #22E6A8;
+  --neon-cyan:            #44D9FF;
+  --neon-pink:            #FF4FA8;
+
+  /* Neutrals — почти не используются */
+  --deep-violet:          #0B0028;  /* основной тёмный, вместо чёрного */
+  --deep-violet-2:        #160447;  /* слой выше, для карточек на тёмном */
+  --ink:                  #FFFFFF;
+  --ink-65:               rgba(255,255,255,0.65);
+  --ink-40:               rgba(255,255,255,0.40);
+  --ink-14:               rgba(255,255,255,0.14);
+  --ink-08:               rgba(255,255,255,0.08);
+
+  /* Semantic */
+  --fg-1:                 var(--ink);
+  --fg-2:                 var(--ink-65);
+  --fg-3:                 var(--ink-40);
+  --fg-inverse:           var(--deep-violet);
+  --bg-1:                 var(--deep-violet);
+  --bg-2:                 var(--deep-violet-2);
+  --accent:               var(--night-magenta);
+  --accent-2:             var(--night-violet);
+  --border-subtle:        var(--ink-14);
+  --border-strong:        var(--night-magenta);
+
+  /* Signature gradients */
+  --grad-sunset:          linear-gradient(135deg, #FF8A3D 0%, #DD58C5 45%, #7238E6 100%);
+  --grad-brand:           linear-gradient(135deg, #DD58C5 0%, #7238E6 100%);
+  --grad-brand-reverse:   linear-gradient(315deg, #DD58C5 0%, #7238E6 100%);
+  --grad-aurora:          linear-gradient(135deg, #22E6A8 0%, #44D9FF 45%, #7238E6 100%);
+  --grad-hero:            radial-gradient(120% 80% at 20% 10%, #FF8A3D 0%, #DD58C5 35%, #7238E6 75%, #0B0028 100%);
+  --grad-protection:      linear-gradient(180deg, rgba(11,0,40,0) 0%, rgba(11,0,40,0.85) 100%);
+
+  /* Glows / shadows — HALOS ONLY, не серые drop-shadows */
+  --glow-magenta:         0 0 40px rgba(221,88,197,0.45), 0 0 12px rgba(221,88,197,0.35);
+  --glow-magenta-lg:      0 0 80px rgba(221,88,197,0.55), 0 0 24px rgba(221,88,197,0.45);
+  --glow-violet:          0 0 40px rgba(114,56,230,0.45);
+  --glow-mint:            0 0 32px rgba(34,230,168,0.45);
+  --glow-cyan:            0 0 32px rgba(68,217,255,0.45);
+  --inner-highlight:      inset 0 1px 0 rgba(255,255,255,0.18);
+  --inner-highlight-lg:   inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -1px 0 rgba(0,0,0,0.2);
+
+  /* Glass panel */
+  --glass-bg:             rgba(255,255,255,0.08);
+  --glass-border:         rgba(255,255,255,0.14);
+  --glass-blur:           blur(24px) saturate(1.4);
+
+  /* ====================================================
+     TYPOGRAPHY TOKENS
+     ==================================================== */
+  --font-display:         'Bebas Neue', 'Bebas Neue Cyrillic', 'Oswald', Impact, sans-serif;
+  --font-text:            'Unbounded', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono:            'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Display scale (плакатные, UPPERCASE) */
+  --fs-display-xxl:       clamp(96px, 16vw, 260px);
+  --fs-display-xl:        clamp(72px, 10vw, 180px);
+  --fs-display-lg:        clamp(56px, 7vw, 120px);
+  --fs-display-md:        clamp(40px, 5vw, 80px);
+  --fs-display-sm:        32px;
+
+  /* Heading / body */
+  --fs-h1:                40px;
+  --fs-h2:                28px;
+  --fs-h3:                22px;
+  --fs-h4:                18px;
+  --fs-body:              16px;
+  --fs-caption:           14px;
+  --fs-micro:             12px;
+
+  /* Line heights */
+  --lh-tight:             0.9;
+  --lh-snug:              1.15;
+  --lh-normal:            1.45;
+  --lh-loose:             1.6;
+
+  /* Weights */
+  --fw-light:             300;
+  --fw-regular:           400;
+  --fw-medium:            500;
+  --fw-semibold:          600;
+  --fw-bold:              700;
+  --fw-black:             800;
+
+  /* Letter-spacing */
+  --tracking-display:     0.01em;
+  --tracking-mono:        0.06em;
+  --tracking-label:       0.12em;
+
+  /* ====================================================
+     SPACING, RADII, ANIM
+     ==================================================== */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px;  --space-4: 16px;
+  --space-5: 24px; --space-6: 32px; --space-7: 48px; --space-8: 64px; --space-9: 96px;
+
+  --radius-xs: 2px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 24px;
+  --radius-xl: 36px;
+  --radius-pill: 999px;
+
+  --ease-out:  cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in:   cubic-bezier(0.6, 0, 0.85, 0.3);
+  --dur-hover: 180ms;
+  --dur-base:  320ms;
+  --dur-long:  600ms;
+}
+
+/* ====================================================
+   SEMANTIC TYPE CLASSES
+   ==================================================== */
+
+.n-display-xxl,
+.n-display-xl,
+.n-display-lg,
+.n-display-md,
+.n-display-sm {
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-display);
+  text-transform: uppercase;
+  color: var(--fg-1);
+}
+.n-display-xxl { font-size: var(--fs-display-xxl); }
+.n-display-xl  { font-size: var(--fs-display-xl); }
+.n-display-lg  { font-size: var(--fs-display-lg); }
+.n-display-md  { font-size: var(--fs-display-md); }
+.n-display-sm  { font-size: var(--fs-display-sm); }
+
+.n-h1, .n-h2, .n-h3, .n-h4 {
+  font-family: var(--font-text);
+  line-height: var(--lh-snug);
+  color: var(--fg-1);
+  margin: 0;
+}
+.n-h1 { font-size: var(--fs-h1); font-weight: var(--fw-bold); }
+.n-h2 { font-size: var(--fs-h2); font-weight: var(--fw-semibold); }
+.n-h3 { font-size: var(--fs-h3); font-weight: var(--fw-semibold); }
+.n-h4 { font-size: var(--fs-h4); font-weight: var(--fw-medium); }
+
+.n-body {
+  font-family: var(--font-text);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-regular);
+  line-height: var(--lh-normal);
+  color: var(--fg-1);
+}
+.n-caption {
+  font-family: var(--font-text);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-regular);
+  line-height: var(--lh-normal);
+  color: var(--fg-2);
+}
+.n-label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-medium);
+  line-height: 1;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--fg-2);
+}
+.n-mono {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: var(--tracking-mono);
+}
+
+/* Grain overlay utility */
+.n-grain::after {
+  content: "";
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.55 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+  opacity: 0.14;
+  mix-blend-mode: overlay;
+}
+
+/* Glass panel utility */
+.n-glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--inner-highlight);
+}

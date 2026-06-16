@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Найт — 3D-прототип центра ракеточных видов спорта</title>
+<link rel="stylesheet" href="ds/colors_and_type.css">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--deep-violet); }
+  body {
+    font-family: var(--font-text);
+    color: var(--fg-1);
+    background:
+      radial-gradient(110% 90% at 78% -10%, rgba(221,88,197,0.22) 0%, rgba(114,56,230,0.14) 38%, rgba(11,0,40,0) 72%),
+      radial-gradient(90% 70% at 8% 108%, rgba(114,56,230,0.18) 0%, rgba(11,0,40,0) 60%),
+      var(--deep-violet);
+  }
+  #stage { position: absolute; inset: 0; }
+  #stage canvas { display: block; }
+
+  /* плёночный grain поверх рендера */
+  .grain {
+    position: absolute; inset: 0; pointer-events: none; z-index: 5;
+    opacity: 0.11; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .chrome { position: absolute; z-index: 10; }
+
+  .controls { top: 28px; right: 28px; display: flex; gap: 10px; align-items: center; }
+  .btn-roof {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--font-text); font-size: 12.5px; font-weight: 500; color: var(--fg-1);
+    background: var(--glass-bg); border: 1px solid var(--glass-border);
+    backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+    border-radius: var(--radius-pill); padding: 11px 18px; cursor: pointer;
+    transition: filter 180ms cubic-bezier(0.2, 0.8, 0.2, 1), transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .btn-roof:hover { filter: brightness(1.12); transform: translateY(-1px); }
+  .btn-roof:active { transform: scale(0.97); }
+  .btn-roof .dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--night-magenta); box-shadow: var(--glow-magenta);
+    transition: background 180ms, box-shadow 180ms;
+  }
+  .btn-roof[aria-pressed="false"] .dot { background: rgba(255,255,255,0.25); box-shadow: none; }
+
+  .hint {
+    bottom: 24px; right: 28px;
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em;
+    color: var(--fg-3); text-align: right; text-transform: uppercase; white-space: nowrap;
+  }
+
+  /* ---- крестик прицела в режиме прогулки ---- */
+  .crosshair {
+    left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 8;
+    width: 22px; height: 22px; pointer-events: none; opacity: 0.85;
+  }
+  .crosshair::before, .crosshair::after {
+    content: ""; position: absolute; background: rgba(255,255,255,0.9);
+    box-shadow: 0 0 6px rgba(221,88,197,0.9);
+  }
+  .crosshair::before { left: 50%; top: 3px; width: 1.5px; height: 16px; transform: translateX(-50%); }
+  .crosshair::after  { top: 50%; left: 3px; height: 1.5px; width: 16px; transform: translateY(-50%); }
+
+  /* ---- нижняя панель движения (Minecraft-style) ---- */
+  .walkpad {
+    left: 50%; bottom: 26px; transform: translateX(-50%);
+    display: flex; align-items: flex-end; gap: 14px;
+    padding: 12px 14px;
+    background: var(--glass-bg); border: 1px solid var(--glass-border);
+    backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 0 40px rgba(221,88,197,0.18);
+  }
+  .walkpad[hidden] { display: none; }
+  .wp-group { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+  .wp-cap {
+    font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.1em;
+    color: var(--fg-3); text-transform: uppercase;
+  }
+  .wp-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 46px; height: 40px; font-size: 17px; line-height: 1;
+    font-family: var(--font-text); color: var(--fg-1);
+    background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md); cursor: pointer; user-select: none;
+    -webkit-user-select: none; touch-action: none;
+    transition: filter 120ms cubic-bezier(0.2,0.8,0.2,1), transform 120ms cubic-bezier(0.2,0.8,0.2,1), background 120ms;
+  }
+  .wp-btn:hover { filter: brightness(1.18); }
+  .wp-btn.act, .wp-btn:active {
+    background: rgba(221,88,197,0.28); border-color: var(--night-magenta);
+    box-shadow: var(--glow-magenta); transform: translateY(1px);
+  }
+  /* d-pad движения: крест 3×2 */
+  .wp-move { display: grid; grid-template-columns: repeat(3, 46px); grid-template-rows: 40px 40px; gap: 6px; }
+  .wp-move .wp-cap { grid-column: 1 / -1; order: -1; }
+  .wp-move [data-move="f"] { grid-column: 2; grid-row: 1; }
+  .wp-move [data-move="l"] { grid-column: 1; grid-row: 2; }
+  .wp-move [data-move="b"] { grid-column: 2; grid-row: 2; }
+  .wp-move [data-move="r"] { grid-column: 3; grid-row: 2; }
+  .wp-stack { display: flex; gap: 6px; }
+  .wp-sep { width: 1px; align-self: stretch; background: rgba(255,255,255,0.1); margin: 4px 2px; }
+  .wp-exit {
+    width: auto; padding: 0 16px; font-size: 12.5px; font-weight: 500;
+  }
+
+  #tweaks-root { position: absolute; z-index: 20; }
+
+  /* ---------- мобильная адаптация ---------- */
+  @media (max-width: 680px) {
+    /* верхние кнопки режимов: компактнее, переносятся, не вылезают за край */
+    .controls {
+      top: max(12px, env(safe-area-inset-top));
+      right: 10px; left: 10px;
+      gap: 8px; flex-wrap: wrap; justify-content: flex-end;
+    }
+    .btn-roof { padding: 9px 12px; font-size: 11.5px; gap: 7px; }
+    .btn-roof .dot { width: 8px; height: 8px; }
+
+    /* подсказки про мышь не нужны на тач-экране */
+    .hint { display: none; }
+
+    /* нижняя панель прогулки — масштабируем под узкий экран */
+    .walkpad {
+      bottom: max(12px, env(safe-area-inset-bottom));
+      gap: 8px; padding: 9px 10px;
+      transform: translateX(-50%) scale(0.86); transform-origin: bottom center;
+    }
+
+    /* панель твиков (точки обзора/атмосфера) — уже и ниже по высоте */
+    .twk-panel {
+      width: min(72vw, 250px) !important;
+      max-height: 46vh !important;
+      right: 10px !important; bottom: 10px !important;
+      font-size: 11px !important;
+    }
+  }
+
+  @media (max-width: 420px) {
+    .walkpad { transform: translateX(-50%) scale(0.76); }
+    .twk-panel { width: min(80vw, 230px) !important; max-height: 42vh !important; }
+  }
+</style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="grain"></div>
+
+  <div class="chrome controls">
+    <button class="btn-roof" id="walkBtn" type="button" aria-pressed="false">
+      <span class="dot"></span><span id="walkLabel">Прогулка</span>
+    </button>
+    <button class="btn-roof" id="mezzBtn" type="button" aria-pressed="true">
+      <span class="dot"></span><span id="mezzLabel">Антресоль: вкл</span>
+    </button>
+    <button class="btn-roof" id="roofBtn" type="button" aria-pressed="true">
+      <span class="dot"></span><span id="roofLabel">Крыша: вкл</span>
+    </button>
+  </div>
+
+  <div class="chrome hint">ЛКМ — вращение · колесо — зум · ПКМ — панорама</div>
+
+  <div class="chrome crosshair" id="crosshair" hidden></div>
+
+  <div class="chrome walkpad" id="walkpad" hidden>
+    <div class="wp-group wp-move">
+      <span class="wp-cap">Шаг</span>
+      <button class="wp-btn" type="button" data-move="f" aria-label="Вперёд">▲</button>
+      <button class="wp-btn" type="button" data-move="l" aria-label="Шаг влево">◀</button>
+      <button class="wp-btn" type="button" data-move="b" aria-label="Назад">▼</button>
+      <button class="wp-btn" type="button" data-move="r" aria-label="Шаг вправо">▶</button>
+    </div>
+    <div class="wp-sep"></div>
+    <div class="wp-group">
+      <span class="wp-cap">Обзор</span>
+      <div class="wp-stack">
+        <button class="wp-btn" type="button" data-move="tl" aria-label="Повернуть влево">↺</button>
+        <button class="wp-btn" type="button" data-move="tr" aria-label="Повернуть вправо">↻</button>
+      </div>
+    </div>
+    <div class="wp-sep"></div>
+    <div class="wp-group">
+      <span class="wp-cap">Высота</span>
+      <div class="wp-stack">
+        <button class="wp-btn" type="button" data-move="up" aria-label="Выше">⤒</button>
+        <button class="wp-btn" type="button" data-move="down" aria-label="Ниже">⤓</button>
+      </div>
+    </div>
+    <div class="wp-sep"></div>
+    <div class="wp-group">
+      <span class="wp-cap">WASD · мышь</span>
+      <button class="wp-btn wp-exit" type="button" id="walkExit">Выйти</button>
+    </div>
+  </div>
+
+  <div id="tweaks-root"></div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module" src="js/night-main.js"></script>
+
+  <script>
+    (function () {
+      const btn = document.getElementById('roofBtn');
+      const label = document.getElementById('roofLabel');
+      let on = true;
+      function setRoofUI(v) { on = v; btn.setAttribute('aria-pressed', String(on)); label.textContent = on ? 'Крыша: вкл' : 'Крыша: выкл'; }
+      btn.addEventListener('click', function () {
+        on = !on;
+        if (window.NightApp) window.NightApp.setRoof(on);
+        setRoofUI(on);
+      });
+      const mbtn = document.getElementById('mezzBtn');
+      const mlabel = document.getElementById('mezzLabel');
+      let mon = true;
+      function setMezzUI(v) { mon = v; mbtn.setAttribute('aria-pressed', String(mon)); mlabel.textContent = mon ? 'Антресоль: вкл' : 'Антресоль: выкл'; }
+      mbtn.addEventListener('click', function () {
+        mon = !mon;
+        if (window.NightApp) window.NightApp.setMezz(mon);
+        setMezzUI(mon);
+      });
+      // синхронизация подписей при авто-переключении из точек обзора
+      document.addEventListener('night:roof', function (e) { setRoofUI(!!e.detail); });
+      document.addEventListener('night:mezz', function (e) { setMezzUI(!!e.detail); });
+      // свободная прогулка от первого лица (как в Minecraft)
+      const wbtn = document.getElementById('walkBtn');
+      const wlabel = document.getElementById('walkLabel');
+      const walkpad = document.getElementById('walkpad');
+      const crosshair = document.getElementById('crosshair');
+      const hint = document.querySelector('.hint');
+      function setWalkUI(on) {
+        wbtn.setAttribute('aria-pressed', String(on));
+        wlabel.textContent = on ? 'Выйти · прогулка' : 'Прогулка';
+        walkpad.hidden = !on;
+        crosshair.hidden = !on;
+        if (hint) hint.style.opacity = on ? '0' : '';
+      }
+      wbtn.addEventListener('click', function () { if (window.NightApp) window.NightApp.toggleWalk(); });
+      document.getElementById('walkExit').addEventListener('click', function () { if (window.NightApp) window.NightApp.stopWalk(); });
+      document.addEventListener('night:walk', function (e) { setWalkUI(!!e.detail); });
+
+      // кнопки-джойстик: удержание = движение
+      document.querySelectorAll('#walkpad .wp-btn[data-move]').forEach(function (b) {
+        const key = b.getAttribute('data-move');
+        const on = function (e) { e.preventDefault(); if (window.NightApp) window.NightApp.setMove(key, true); b.classList.add('act'); };
+        const off = function () { if (window.NightApp) window.NightApp.setMove(key, false); b.classList.remove('act'); };
+        b.addEventListener('pointerdown', on);
+        b.addEventListener('pointerup', off);
+        b.addEventListener('pointerleave', off);
+        b.addEventListener('pointercancel', off);
+      });
+    })();
+  </script>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script type="text/babel" src="js/tweaks-panel.jsx"></script>
+  <script type="text/babel" src="js/night-tweaks.jsx"></script>
+</body>
+</html>
