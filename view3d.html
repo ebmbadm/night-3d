@@ -62,6 +62,41 @@
   .wp-stack{ display:flex; gap:5px; }
   .wp-sep{ width:1px; align-self:stretch; background:rgba(255,255,255,0.1); margin:4px 2px; }
   .wp-exit{ width:auto; padding:0 14px; font-size:12px; font-weight:500; }
+
+  /* ---- панель управления видом ---- */
+  .v3d-panel{
+    position:absolute; top:58px; left:22px; z-index:12; width:210px;
+    max-height:calc(100% - 80px); overflow-y:auto;
+    display:flex; flex-direction:column; gap:12px; padding:14px 14px 16px;
+    background:rgba(252,250,254,0.82); border:1px solid rgba(21,14,43,0.10);
+    backdrop-filter:blur(20px) saturate(1.3); -webkit-backdrop-filter:blur(20px) saturate(1.3);
+    border-radius:16px; box-shadow:0 16px 50px rgba(21,14,43,0.14);
+    transition:opacity 0.3s var(--ease-out), transform 0.3s var(--ease-out);
+  }
+  .v3d-panel.hide{ opacity:0; transform:translateX(-14px); pointer-events:none; }
+  .v3d-cap{ font-family:var(--font-mono); font-size:9px; letter-spacing:0.13em; text-transform:uppercase; color:rgba(21,14,43,0.45); margin-bottom:8px; }
+  .v3d-div{ height:1px; background:rgba(21,14,43,0.08); }
+  .v3d-grid{ display:grid; grid-template-columns:1fr 1fr; gap:5px; }
+  .v3d-chip{ font-family:var(--font-text); font-size:11px; color:#150E2B; padding:8px 6px; border-radius:9px; cursor:pointer; background:rgba(21,14,43,0.04); border:1px solid rgba(21,14,43,0.08); transition:background 130ms var(--ease-out), border-color 130ms var(--ease-out), color 130ms; text-align:center; line-height:1.1; }
+  .v3d-chip:hover{ background:rgba(194,57,159,0.10); border-color:rgba(194,57,159,0.30); }
+  .v3d-chip.on{ background:rgba(194,57,159,0.16); border-color:#C2399F; color:#A53391; font-weight:500; }
+  .v3d-tgl{ display:flex; align-items:center; gap:9px; width:100%; font-family:var(--font-text); font-size:12px; color:#150E2B; padding:9px 10px; margin-top:5px; border-radius:10px; cursor:pointer; background:rgba(21,14,43,0.04); border:1px solid rgba(21,14,43,0.08); transition:background 130ms var(--ease-out), border-color 130ms var(--ease-out); }
+  .v3d-tgl:first-of-type{ margin-top:0; }
+  .v3d-tgl:hover{ background:rgba(21,14,43,0.07); }
+  .v3d-dot{ width:8px; height:8px; border-radius:50%; background:rgba(21,14,43,0.20); transition:background 130ms, box-shadow 130ms; flex:0 0 auto; }
+  .v3d-tgl.on{ background:rgba(194,57,159,0.13); border-color:rgba(194,57,159,0.34); }
+  .v3d-tgl.on .v3d-dot{ background:#C2399F; box-shadow:0 0 8px rgba(194,57,159,0.7); }
+  .v3d-schemes{ display:flex; gap:5px; }
+  .v3d-sch{ flex:1; font-family:var(--font-text); font-size:10.5px; color:#150E2B; padding:7px 4px; border-radius:8px; cursor:pointer; background:rgba(21,14,43,0.04); border:1px solid rgba(21,14,43,0.08); transition:background 130ms var(--ease-out), border-color 130ms var(--ease-out), color 130ms; }
+  .v3d-sch:hover{ background:rgba(114,56,230,0.10); }
+  .v3d-sch.on{ background:rgba(114,56,230,0.14); border-color:#7238E6; color:#4A1DAD; font-weight:500; }
+  .v3d-glow{ width:100%; accent-color:#C2399F; cursor:pointer; }
+  /* мобильная кнопка сворачивания панели */
+  .v3d-toggle-btn{ display:none; }
+  @media (max-width:760px){
+    .v3d-panel{ width:184px; top:52px; padding:12px; }
+    .v3d-chip{ font-size:10.5px; padding:7px 5px; }
+  }
 </style>
 </head>
 <body>
@@ -69,6 +104,48 @@
   <div class="grain"></div>
   <div class="logo-badge">НАЙТ<span>|</span></div>
   <div class="hint">ЛКМ — вращение · колесо — зум · ПКМ — панорама</div>
+
+  <!-- панель управления видом -->
+  <div class="v3d-panel" id="v3dPanel">
+    <div>
+      <div class="v3d-cap">Сцены</div>
+      <div class="v3d-grid">
+        <button class="v3d-chip" type="button" data-view="overview">Обзор</button>
+        <button class="v3d-chip" type="button" data-view="entrance">Вход</button>
+        <button class="v3d-chip" type="button" data-view="reception">Ресепшн</button>
+        <button class="v3d-chip" type="button" data-view="badminton">Бадминтон</button>
+        <button class="v3d-chip" type="button" data-view="padel">Падел</button>
+        <button class="v3d-chip" type="button" data-view="tt">Наст. теннис</button>
+        <button class="v3d-chip" type="button" data-view="shop">Про-шоп</button>
+        <button class="v3d-chip" type="button" data-view="locker">Раздевалки</button>
+        <button class="v3d-chip" type="button" data-view="tech">Техзона</button>
+        <button class="v3d-chip" type="button" data-view="mezzanine">2-й этаж</button>
+        <button class="v3d-chip" type="button" data-view="gym">ОФП-зал</button>
+        <button class="v3d-chip" type="button" data-view="lounge">Лаундж</button>
+      </div>
+    </div>
+    <div class="v3d-div"></div>
+    <div>
+      <div class="v3d-cap">Вид</div>
+      <button class="v3d-tgl" type="button" data-toggle="roof"><span class="v3d-dot"></span>Крыша</button>
+      <button class="v3d-tgl" type="button" data-toggle="mezz"><span class="v3d-dot"></span>Антресоль</button>
+      <button class="v3d-tgl" type="button" data-toggle="walk"><span class="v3d-dot"></span>Прогулка</button>
+    </div>
+    <div class="v3d-div"></div>
+    <div>
+      <div class="v3d-cap">Покрытие</div>
+      <div class="v3d-schemes">
+        <button class="v3d-sch on" type="button" data-scheme="Малина">Малина</button>
+        <button class="v3d-sch" type="button" data-scheme="Фиолет">Фиолет</button>
+        <button class="v3d-sch" type="button" data-scheme="Классика">Классика</button>
+      </div>
+    </div>
+    <div class="v3d-div"></div>
+    <div>
+      <div class="v3d-cap">Свечение</div>
+      <input type="range" class="v3d-glow" min="0" max="2" step="0.05" value="1" aria-label="Свечение">
+    </div>
+  </div>
   <div class="crosshair" id="crosshair" hidden></div>
   <div class="walkpad" id="walkpad" hidden>
     <div class="wp-group wp-move">
@@ -129,6 +206,67 @@
         b.addEventListener('pointerup',    off);
         b.addEventListener('pointerleave', off);
         b.addEventListener('pointercancel',off);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var panel = document.getElementById('v3dPanel');
+
+      function whenReady(cb) {
+        if (window.NightApp) return cb();
+        var n = 0, iv = setInterval(function () {
+          if (window.NightApp) { clearInterval(iv); cb(); }
+          else if (++n > 200) clearInterval(iv);
+        }, 50);
+      }
+
+      // ---- сцены (точки обзора) ----
+      var chips = panel.querySelectorAll('.v3d-chip[data-view]');
+      chips.forEach(function (b) {
+        b.addEventListener('click', function () {
+          if (!window.NightApp) return;
+          window.NightApp.flyTo(b.getAttribute('data-view'));
+          chips.forEach(function (x) { x.classList.remove('on'); });
+          b.classList.add('on');
+        });
+      });
+
+      // ---- переключатели вида ----
+      function tgl(name) { return panel.querySelector('.v3d-tgl[data-toggle="' + name + '"]'); }
+      tgl('roof').addEventListener('click', function () { if (window.NightApp) window.NightApp.setRoof(!window.NightApp.getRoof()); });
+      tgl('mezz').addEventListener('click', function () { if (window.NightApp) window.NightApp.setMezz(!window.NightApp.getMezz()); });
+      tgl('walk').addEventListener('click', function () { if (window.NightApp) window.NightApp.toggleWalk(); });
+
+      document.addEventListener('night:roof', function (e) { tgl('roof').classList.toggle('on', !!e.detail); });
+      document.addEventListener('night:mezz', function (e) { tgl('mezz').classList.toggle('on', !!e.detail); });
+      document.addEventListener('night:walk', function (e) {
+        tgl('walk').classList.toggle('on', !!e.detail);
+        panel.classList.toggle('hide', !!e.detail); // в прогулке прячем панель — остаётся walkpad
+      });
+
+      // ---- цветовые схемы покрытий ----
+      var schs = panel.querySelectorAll('.v3d-sch[data-scheme]');
+      schs.forEach(function (b) {
+        b.addEventListener('click', function () {
+          if (!window.NightApp) return;
+          window.NightApp.setScheme(b.getAttribute('data-scheme'));
+          schs.forEach(function (x) { x.classList.remove('on'); });
+          b.classList.add('on');
+        });
+      });
+
+      // ---- свечение неона ----
+      var glow = panel.querySelector('.v3d-glow');
+      glow.addEventListener('input', function () { if (window.NightApp) window.NightApp.setGlow(parseFloat(glow.value)); });
+
+      // ---- начальная синхронизация состояния ----
+      whenReady(function () {
+        tgl('roof').classList.toggle('on', window.NightApp.getRoof());
+        tgl('mezz').classList.toggle('on', window.NightApp.getMezz());
+        var ov = panel.querySelector('.v3d-chip[data-view="overview"]');
+        if (ov) ov.classList.add('on');
       });
     })();
   </script>
