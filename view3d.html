@@ -112,23 +112,20 @@
       <div class="v3d-grid">
         <button class="v3d-chip" type="button" data-view="overview">Обзор</button>
         <button class="v3d-chip" type="button" data-view="entrance">Вход</button>
-        <button class="v3d-chip" type="button" data-view="reception">Ресепшн</button>
-        <button class="v3d-chip" type="button" data-view="badminton">Бадминтон</button>
         <button class="v3d-chip" type="button" data-view="padel">Падел</button>
+        <button class="v3d-chip" type="button" data-view="badminton">Бадминтон</button>
         <button class="v3d-chip" type="button" data-view="tt">Наст. теннис</button>
+        <button class="v3d-chip" type="button" data-view="reception">Ресепшн</button>
         <button class="v3d-chip" type="button" data-view="shop">Про-шоп</button>
         <button class="v3d-chip" type="button" data-view="locker">Раздевалки</button>
-        <button class="v3d-chip" type="button" data-view="tech">Техзона</button>
-        <button class="v3d-chip" type="button" data-view="mezzanine">2-й этаж</button>
-        <button class="v3d-chip" type="button" data-view="gym">ОФП-зал</button>
-        <button class="v3d-chip" type="button" data-view="lounge">Лаундж</button>
+        <button class="v3d-chip" type="button" data-view="server">Серверная</button>
+        <button class="v3d-chip" type="button" data-view="admin">Админ</button>
       </div>
     </div>
     <div class="v3d-div"></div>
     <div>
       <div class="v3d-cap">Вид</div>
-      <button class="v3d-tgl" type="button" data-toggle="roof"><span class="v3d-dot"></span>Крыша</button>
-      <button class="v3d-tgl" type="button" data-toggle="mezz"><span class="v3d-dot"></span>Антресоль</button>
+      <button class="v3d-tgl" type="button" data-toggle="roof"><span class="v3d-dot"></span>Тент-кровля</button>
       <button class="v3d-tgl" type="button" data-toggle="walk"><span class="v3d-dot"></span>Прогулка</button>
     </div>
     <div class="v3d-div"></div>
@@ -236,11 +233,9 @@
       // ---- переключатели вида ----
       function tgl(name) { return panel.querySelector('.v3d-tgl[data-toggle="' + name + '"]'); }
       tgl('roof').addEventListener('click', function () { if (window.NightApp) window.NightApp.setRoof(!window.NightApp.getRoof()); });
-      tgl('mezz').addEventListener('click', function () { if (window.NightApp) window.NightApp.setMezz(!window.NightApp.getMezz()); });
       tgl('walk').addEventListener('click', function () { if (window.NightApp) window.NightApp.toggleWalk(); });
 
       document.addEventListener('night:roof', function (e) { tgl('roof').classList.toggle('on', !!e.detail); });
-      document.addEventListener('night:mezz', function (e) { tgl('mezz').classList.toggle('on', !!e.detail); });
       document.addEventListener('night:walk', function (e) {
         tgl('walk').classList.toggle('on', !!e.detail);
         panel.classList.toggle('hide', !!e.detail); // в прогулке прячем панель — остаётся walkpad
@@ -264,7 +259,6 @@
       // ---- начальная синхронизация состояния ----
       whenReady(function () {
         tgl('roof').classList.toggle('on', window.NightApp.getRoof());
-        tgl('mezz').classList.toggle('on', window.NightApp.getMezz());
         var ov = panel.querySelector('.v3d-chip[data-view="overview"]');
         if (ov) ov.classList.add('on');
       });

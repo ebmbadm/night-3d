@@ -23,10 +23,10 @@ scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 scene.environmentIntensity = 0.5;
 
 const camera = new THREE.PerspectiveCamera(42, stage.clientWidth / stage.clientHeight, 0.5, 600);
-camera.position.set(74, 42, -52);
+camera.position.set(44, 31, -44);
 
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(0, 2.5, 0);
+controls.target.set(0, 3, -4);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
 controls.maxPolarAngle = Math.PI * 0.49;
@@ -67,66 +67,46 @@ document.addEventListener('mousemove', (e) => {
   walkPitch = Math.max(-1.2, Math.min(1.2, walkPitch));
 });
 
-/* ---------- точки обзора (плановые координаты: PX=x-30, PZ=y-18.9) ---------- */
-// mkView(x, h, y,  tx, th, ty) — позиция «на уровне глаз» и цель взгляда
+/* ---------- точки обзора (плановые координаты: PX=x-25, PZ=y-15) ---------- */
+// mkView(x, h, y,  tx, th, ty) — позиция «на уровне глаз» и цель взгляда.
+// План: зал x 0–50 / y 0–30 (конёк y=15); пристройка южнее, y −13…−3.
 function mkView(x, h, y, tx, th, ty) {
   return {
-    pos: new THREE.Vector3(x - 30, h, y - 18.9),
-    tgt: new THREE.Vector3(tx - 30, th, ty - 18.9),
+    pos: new THREE.Vector3(x - 25, h, y - 15),
+    tgt: new THREE.Vector3(tx - 25, th, ty - 15),
   };
 }
 const VIEWS = {
-  overview:  { pos: new THREE.Vector3(74, 42, -52), tgt: new THREE.Vector3(0, 2.5, 0) },
-  entrance:  mkView(69,   2.0, 7.4,   59,    3.4, 7.4),   // снаружи, у входной группы
-  reception: mkView(59.3, 1.7, 6.9,   55.2,  1.6, 9.9),   // от входа: стойка, бренд-стена, табло
-  cloakroom: mkView(59.1, 1.72, 8.3,  56.6,  1.0, 4.7),   // гардероб: стойка, вешалки, номерки
-  shop:      mkView(41.2, 1.68, 12.35,  38.4,  1.0, 14.2), // в про-шопе (перенесён в зону НТ): касса, витрина, ракеточная стена
-  corridor:  mkView(56.1, 1.65, 7.8,  47.7,  1.3, 7.8),   // вдоль коридора к кортам
-  locker:    mkView(53.6, 1.65, 9.3,  48.7,  1.05, 13.4), // внутри раздевалки 2
-  wet:       mkView(55.0, 1.7, 1.5,   58.4,  1.05, 3.1),   // мокрая зона 1: душевые, раковины, санузлы
-  padel:     mkView(23.85,1.6, 18.8,  23.85, 1.3, 33),    // на падел-корте, лицом к сетке
-  badminton: mkView(11.45,1.6, 2.4,   11.45, 1.2, 13),    // на бадминтонном корте
-  tt:        mkView(46.5, 1.6, 11.8,  33,    0.95,10),    // в зоне настольного тенниса
-  tech:      mkView(16.5, 8.5, 33.9, 3.0, 0.8, 33.4),     // техзона: венткамера, серверная, склады + воздуховоды
-  ventroom:  mkView(5.6, 1.75, 34.6, 1.4, 1.35, 35.0),    // внутри венткамеры — установки + ИТП
-  server:    mkView(5.8, 1.7, 31.5, 1.3, 1.35, 30.0),     // внутри серверной — стойки, кондиционер
-  storeinv:  mkView(5.9, 1.7, 27.6, 1.4, 1.3, 24.9),      // склад инвентаря — стеллажи, пушки
-  store:     mkView(5.9, 1.7, 21.2, 1.4, 1.3, 18.4),      // склад/хозблок — стеллажи, ГРЩ
-  mezzanine: mkView(32.5, 7.6, 7.2,  49,    4.9, 12.6),  // на антресоли — анфилада зон сверху
-  gym:       mkView(52.2, 5.8, 4.6,   57.5,  5.2, 12.0),  // ОФП-зал (дальний край): рама, кардио, зеркало
-  lounge:    mkView(38.5, 6.0, 10.6,  32.0,  5.0, 6.4),   // лаундж: диваны, пуфики, балкон
-  office:    mkView(36.2, 5.7, 6.6,   36.2,  4.9, 1.6),   // кабинеты у южной стены
-  // — виды сверху на каждую зону: камера висит над зоной, слегка под углом —
-  padelTop:     mkView(29,   40, 15,   29,   0.5, 27),    // падел-холл сверху (4 панорамика + сингл)
-  badmintonTop: mkView(14,   25, 0,    14,   0.5, 8),     // бадминтон-холл сверху (4 корта)
-  ttTop:        mkView(38,   19, 3,    38,   0.5, 10.5),  // настольный теннис сверху (4 стола)
-  receptionTop: mkView(56,   15, 4,    56.5, 0.5, 10),    // ресепшн / турникеты сверху
-  shopTop:      mkView(38,   16, 8,    38,   0.5, 14),    // про-шоп сверху
-  lockerTop:    mkView(51,   20, 0,    51,   0.5, 7.8),   // обе раздевалки сверху
-  techTop:      mkView(6,    30, 16,   4,    0.5, 27),    // техзона (вент/серверная/склады) сверху
-  secondFloorTop: mkView(45, 30, -2,   45,   4.8, 8),     // весь второй этаж (антресоль) сверху
-  loungeTop:    mkView(32.6, 17, 7,    32.6, 4.8, 13.2),  // лаундж сверху
-  gymTop:       mkView(56,   17, 3,    56,   4.8, 9),     // ОФП-зал сверху
+  overview:  { pos: new THREE.Vector3(44, 31, -44), tgt: new THREE.Vector3(0, 3, -4) },
+  entrance:  mkView(18,   6.4, -23,  30,   2.6, -7),     // снаружи, у входной группы (юг: пристройка + тент)
+  reception: mkView(24.5, 1.7, -12.4, 24.5, 1.55, -6.5), // ресепшн: от входа на стойку, бренд-стену, табло
+  shop:      mkView(31.4, 1.7, -4.6, 28.2, 1.2, -10.6), // pro-shop: ракеточная стена, витрина, касса
+  locker:    mkView(15.4, 1.65, -4.6, 12.6, 1.1, -11.4), // внутри раздевалки М
+  padel:     mkView(4.5,  1.6,  5.5,  18.0, 1.3,  5.5),   // на падел-корте (П3), лицом к сетке
+  badminton: mkView(14.6, 1.6, 15.0, 24.0, 1.2, 15.0),   // на бадминтонном корте (Б2)
+  tt:        mkView(42.6, 1.6, 11.0, 46.0, 0.95, 15.5),  // в зоне настольного тенниса
+  server:    mkView(34.6, 1.7, -4.6, 33.0, 1.3, -11.2), // серверная пристройки
+  admin:     mkView(39.4, 1.7, -4.6, 36.4, 1.2, -11.2), // админ / тренерская
+  // — виды сверху на зону: камера висит над зоной, слегка под углом —
+  padelTop:     mkView(21,   33, 6,    21,   0.5, 16),    // падел-холл сверху (4 панорамика)
+  badmintonTop: mkView(20.8, 26, 9,    20.8, 0.5, 15),    // бадминтон-холл сверху (3 корта)
+  ttTop:        mkView(45.5, 24, 9,    45.5, 0.5, 15),    // настольный теннис сверху (3 стола)
+  receptionTop: mkView(24.5, 15, -6.5, 24.5, 0.5, -10),   // ресепшн сверху
+  shopTop:      mkView(29.5, 15, -6.5, 29.5, 0.5, -10),   // pro-shop сверху
+  lockerTop:    mkView(16,   16, -6.5, 16,   0.5, -8.5),  // раздевалки сверху
+  annexTop:     mkView(25,   24, -16,  25,   0.5, -8),    // вся пристройка сверху
 };
 
-// окружение для точки обзора: крыша / антресоль
+// окружение для точки обзора: крыша (антресоли в v4 нет)
 const VIEW_ENV = {
-  overview:  { roof: 1, mezz: 1 }, entrance: { roof: 1, mezz: 1 },
-  reception: { roof: 0, mezz: 1 }, shop: { roof: 0, mezz: 1 }, corridor: { roof: 0, mezz: 1 },
-  cloakroom: { roof: 0, mezz: 1 },
-  locker:    { roof: 0, mezz: 0 }, padel: { roof: 0, mezz: 1 }, badminton: { roof: 0, mezz: 1 },
-  wet:       { roof: 0, mezz: 1 },
-  tt:        { roof: 0, mezz: 0 },
-  tech:      { roof: 0, mezz: 0 },
-  ventroom:  { roof: 0, mezz: 1 }, server: { roof: 0, mezz: 1 },
-  storeinv:  { roof: 0, mezz: 1 }, store: { roof: 0, mezz: 1 },
-  mezzanine: { roof: 0, mezz: 1 }, gym: { roof: 0, mezz: 1 },
-  lounge:    { roof: 0, mezz: 1 }, office: { roof: 0, mezz: 1 },
-  // виды сверху: крыша снята; на земле антресоль скрыта, на втором этаже — показана
+  overview:  { roof: 1, mezz: 0 }, entrance: { roof: 1, mezz: 0 },
+  reception: { roof: 1, mezz: 0 }, shop: { roof: 1, mezz: 0 },
+  locker:    { roof: 1, mezz: 0 }, server: { roof: 1, mezz: 0 }, admin: { roof: 1, mezz: 0 },
+  padel:     { roof: 0, mezz: 0 }, badminton: { roof: 0, mezz: 0 }, tt: { roof: 0, mezz: 0 },
+  // виды сверху: крыша/кровля снята
   padelTop:     { roof: 0, mezz: 0 }, badmintonTop: { roof: 0, mezz: 0 }, ttTop: { roof: 0, mezz: 0 },
   receptionTop: { roof: 0, mezz: 0 }, shopTop: { roof: 0, mezz: 0 }, lockerTop: { roof: 0, mezz: 0 },
-  techTop:      { roof: 0, mezz: 0 },
-  secondFloorTop: { roof: 0, mezz: 1 }, loungeTop: { roof: 0, mezz: 1 }, gymTop: { roof: 0, mezz: 1 },
+  annexTop:     { roof: 0, mezz: 0 },
 };
 
 let camTween = null;
@@ -161,11 +141,11 @@ function flyTo(name, animate = true) {
 }
 
 /* ---------- свободная прогулка от первого лица (как в Minecraft) ---------- */
-// WASD / стрелки + мышь — обзор; пробел/Shift — выше/ниже. Координаты сцены: x-30, z-18.9.
+// WASD / стрелки + мышь — обзор; пробел/Shift — выше/ниже. Координаты сцены: x-25, z-15.
 const EYE = 1.65;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const walkPos = new THREE.Vector3(20, EYE, -11); // главный коридор
-let walkYaw = Math.PI / 2;   // 0 = взгляд на −Z; π/2 = взгляд на −X (вглубь зала)
+const walkPos = new THREE.Vector3(9, EYE, -16); // у входа со стороны пристройки
+let walkYaw = Math.PI;       // взгляд на +Z (на север, вглубь зала)
 let walkPitch = 0;
 let walkSpeed = 7.0;         // м/с (регулируется колесом)
 const TURN_SPEED = 1.7;      // рад/с (кнопки/Q-E)
@@ -178,7 +158,7 @@ function startWalk() {
   walkSpeed = 7.0;
   // если камера сверху (обзор) — спускаемся на пол у входа; иначе с текущей точки
   if (camera.position.y > 4) {
-    walkPos.set(20, EYE, -11); walkYaw = Math.PI / 2;
+    walkPos.set(9, EYE, -16); walkYaw = Math.PI;
   } else {
     walkPos.copy(camera.position); walkPos.y = EYE;
     const d = controls.target.clone().sub(camera.position);
@@ -215,8 +195,8 @@ function updateWalk(dt) {
   if (_mv.lengthSq() > 0) { _mv.normalize().multiplyScalar(walkSpeed * dt); walkPos.add(_mv); }
   if (move.up)   walkPos.y += walkSpeed * 0.7 * dt;
   if (move.down) walkPos.y -= walkSpeed * 0.7 * dt;
-  walkPos.x = clamp(walkPos.x, -42, 44);
-  walkPos.z = clamp(walkPos.z, -24, 24);
+  walkPos.x = clamp(walkPos.x, -25, 25);
+  walkPos.z = clamp(walkPos.z, -28, 15);
   walkPos.y = clamp(walkPos.y, 0.7, 12);
   camera.position.copy(walkPos);
   const cp = Math.cos(walkPitch);
@@ -265,10 +245,11 @@ function neonPoint(color, x, h, z, intensity, dist) {
   l.userData.base = intensity;
   scene.add(l); neonLights.push(l);
 }
-neonPoint(0xdd58c5, 0, 9.5, -3, 220, 70);     // конёк
-neonPoint(0x7238e6, -18, 6.5, 8, 120, 50);    // бадминтон-холл
-neonPoint(0xff8a3d, 9, 4.5, 16, 60, 30);      // кафе
-neonPoint(0xdd58c5, 31.5, 4.5, 11.5, 70, 30); // вход
+neonPoint(0xdd58c5, 0, 9.6, 0, 200, 60);      // конёк / бадминтон-центр
+neonPoint(0x7238e6, -12, 6, 6, 110, 44);      // падел С-З
+neonPoint(0x7238e6, 12, 6, -6, 110, 44);      // падел Ю-В
+neonPoint(0xff8a3d, 20, 5, 0, 70, 34);        // настольный теннис (восток)
+neonPoint(0xdd58c5, 9, 4.5, -18, 80, 34);     // вход / пристройка
 
 /* ---------- сцена ---------- */
 const { roofGroup, roofMats, neonMats, mezzGroup, M } = buildScene(scene);
@@ -277,9 +258,9 @@ const { roofGroup, roofMats, neonMats, mezzGroup, M } = buildScene(scene);
 const state = { roof: 1, roofTarget: 1, mezz: 1, mezzTarget: 1, glow: 1, walls: 0.16 };
 
 const SCHEMES = {
-  'Малина':   { bad: 0xc2399f, padel: 0x5e2fd6, single: 0x7a3fe2, tt: 0x4a1dad },
-  'Фиолет':   { bad: 0x5e2fd6, padel: 0xb83fa3, single: 0xd158b8, tt: 0x7238e6 },
-  'Классика': { bad: 0x2e7d52, padel: 0x2563b8, single: 0x2e7d52, tt: 0x1e4fa0 },
+  'Малина':   { bad: 0xc2399f, padel: 0x5e2fd6, tt: 0x4a1dad },
+  'Фиолет':   { bad: 0x5e2fd6, padel: 0xb83fa3, tt: 0x7238e6 },
+  'Классика': { bad: 0x2e7d52, padel: 0x2563b8, tt: 0x1e4fa0 },
 };
 
 window.NightApp = {
@@ -306,7 +287,6 @@ window.NightApp = {
     const s = SCHEMES[name] || SCHEMES['Малина'];
     M.badCourt.color.set(s.bad);
     M.padelTurf.color.set(s.padel);
-    M.padelTurfSingle.color.set(s.single);
     M.ttTop.color.set(s.tt);
   },
   // точки обзора
@@ -337,7 +317,7 @@ function tick() {
   const k = state.roof;
   roofGroup.position.y = (1 - k) * 16;
   const op = Math.max(0, Math.min(1, (k - 0.15) / 0.85));
-  for (const m of roofMats) { m.opacity = op; m.transparent = true; }
+  for (const m of roofMats) { m.opacity = (m.userData.baseOpacity ?? 1) * op; m.transparent = true; }
   roofGroup.visible = k > 0.02;
   // плавный подъём антресоли
   state.mezz += (state.mezzTarget - state.mezz) * Math.min(1, dt * 4.5);
