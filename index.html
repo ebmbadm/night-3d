@@ -48,48 +48,8 @@
   .nb-xls-btn:hover{ filter:brightness(1.06); transform:translateY(-1px); }
   .nb-xls-btn:active{ transform:translateY(0) scale(0.99); }
 
-  /* ---- PIN lock screen ---- */
-  #nb-lock{ position:fixed; inset:0; z-index:999999; background:radial-gradient(120% 80% at 50% -8%, rgba(194,57,159,0.24) 0%, rgba(108,48,214,0.18) 40%, rgba(21,14,43,0) 74%), #150E2B; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:28px; }
-  #nb-lock.nb-unlocked{ opacity:0; visibility:hidden; pointer-events:none; transition:opacity 0.4s, visibility 0.4s; }
-  .nb-dot{ width:14px; height:14px; border-radius:50%; border:2px solid rgba(255,255,255,0.28); transition:background 120ms, border-color 120ms; }
-  .nb-dot.on{ background:#C2399F; border-color:#C2399F; box-shadow:0 0 8px rgba(194,57,159,0.7); }
-  .nb-pin-key{ width:72px; height:62px; border-radius:14px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.12); color:#fff; font-family:'Unbounded',sans-serif; font-size:22px; font-weight:400; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 120ms, transform 100ms; user-select:none; -webkit-user-select:none; touch-action:manipulation; }
-  .nb-pin-key:hover{ background:rgba(255,255,255,0.13); }
-  .nb-pin-key:active{ background:rgba(194,57,159,0.38); transform:scale(0.95); }
-  @keyframes nb-shake{ 0%,100%{ transform:translateX(0) } 20%{ transform:translateX(-9px) } 40%{ transform:translateX(9px) } 60%{ transform:translateX(-6px) } 80%{ transform:translateX(5px) } }
-  .nb-shake{ animation:nb-shake 0.38s ease; }
 </style>
 </helmet>
-
-<!-- ===================== PIN LOCK ===================== -->
-<div id="nb-lock">
-  <div style="font-family:'Bebas Neue','Bebas Neue Cyrillic',sans-serif; font-size:68px; line-height:0.82; letter-spacing:0.02em; color:#fff; text-align:center;">
-    НАЙТ<span style="color:#C2399F;">|</span>
-  </div>
-  <div style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(255,255,255,0.4); margin-top:4px;">
-    Введите код доступа
-  </div>
-  <div id="nb-pin-dots" style="display:flex; gap:18px; margin:4px 0;">
-    <span class="nb-dot"></span><span class="nb-dot"></span><span class="nb-dot"></span><span class="nb-dot"></span>
-  </div>
-  <div id="nb-pin-pad" style="display:grid; grid-template-columns:repeat(3,72px); gap:11px;">
-    <button class="nb-pin-key" data-d="1">1</button>
-    <button class="nb-pin-key" data-d="2">2</button>
-    <button class="nb-pin-key" data-d="3">3</button>
-    <button class="nb-pin-key" data-d="4">4</button>
-    <button class="nb-pin-key" data-d="5">5</button>
-    <button class="nb-pin-key" data-d="6">6</button>
-    <button class="nb-pin-key" data-d="7">7</button>
-    <button class="nb-pin-key" data-d="8">8</button>
-    <button class="nb-pin-key" data-d="9">9</button>
-    <button class="nb-pin-key" id="nb-pin-del" style="font-size:18px; color:rgba(255,255,255,0.6);">⌫</button>
-    <button class="nb-pin-key" data-d="0">0</button>
-    <div></div>
-  </div>
-  <div id="nb-pin-err" style="height:18px; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.08em; color:#C2399F; opacity:0; transition:opacity 200ms;">
-    Неверный код
-  </div>
-</div>
 
 <div id="nb-scaler" style="position:fixed; inset:0; background:radial-gradient(120% 80% at 78% -12%, rgba(194,57,159,0.16) 0%, rgba(108,48,214,0.10) 40%, rgba(228,222,239,0) 72%), radial-gradient(90% 70% at 8% 112%, rgba(108,48,214,0.14) 0%, rgba(228,222,239,0) 60%), #E4DEEF; display:flex; align-items:center; justify-content:center; overflow:hidden;">
 <div id="nb-app" style="display:flex; width:1440px; height:810px; flex:0 0 auto; transform-origin:center center; font-family:'Unbounded',sans-serif; background:#F4F1FA; color:#150E2B; overflow:hidden; box-shadow:0 40px 130px rgba(21,14,43,0.16);">
@@ -170,7 +130,7 @@
         <div style="flex:1; min-height:0; display:flex; flex-direction:column;">
           <div style="font-family:'JetBrains Mono',monospace; font-size:14px; letter-spacing:0.18em; text-transform:uppercase; color:#C2399F; pointer-events:auto;">Обзор проекта · концепция</div>
           <h1 style="font-family:'Bebas Neue',sans-serif; font-weight:400; font-size:62px; line-height:0.92; letter-spacing:0.01em; color:#150E2B; margin:16px 0 0; max-width:640px; text-transform:uppercase; pointer-events:auto;">Мультиформатный центр ракеточных видов спорта</h1>
-          <p style="font-family:'Unbounded',sans-serif; font-weight:300; font-size:15.5px; line-height:1.6; color:rgba(21,14,43,0.78); max-width:520px; margin:20px 0 0; pointer-events:auto;">Падел, бадминтон и настольный теннис под одной крышей в спальном районе Санкт-Петербурга. Каркасное здание 2 100 м² — земля и стройка на собственные средства.</p>
+          <p style="font-family:'Unbounded',sans-serif; font-weight:300; font-size:15.5px; line-height:1.6; color:rgba(21,14,43,0.78); max-width:520px; margin:20px 0 0; pointer-events:auto;">Падел, бадминтон и настольный теннис под одной крышей в спальном районе Санкт-Петербурга. Каркасно-тентовое двухконтурное сооружение — зал ≤1500 м² + капитальная пристройка ≈300 м².</p>
 
           <div style="display:flex; gap:12px; margin-top:28px; max-width:680px; pointer-events:auto;">
             <sc-for list="{{ pillars }}" as="p" hint-placeholder-count="3">
@@ -202,8 +162,7 @@
             <h2 style="font-family:'Bebas Neue',sans-serif; font-weight:400; font-size:46px; line-height:0.9; color:#150E2B; margin:8px 0 0; text-transform:uppercase; white-space:nowrap;">Состав помещений</h2>
           </div>
           <div style="display:flex; gap:8px; pointer-events:auto;">
-            <button type="button" onClick="{{ toggleRoof }}" style="{{ roofBtnStyle }}"><span style="{{ roofDot }}"></span>Крыша</button>
-            <button type="button" onClick="{{ toggleMezz }}" style="{{ mezzBtnStyle }}"><span style="{{ mezzDot }}"></span>Антресоль</button>
+            <button type="button" onClick="{{ toggleRoof }}" style="{{ roofBtnStyle }}"><span style="{{ roofDot }}"></span>Тент-кровля</button>
             <button type="button" onClick="{{ toggleWalk }}" style="{{ walkBtnStyle }}"><span style="{{ walkDot }}"></span>Прогулка</button>
           </div>
         </div>
@@ -625,7 +584,7 @@ class Component extends DCLogic {
   };
 
   _marketView(t){ return ({padel:'padel',badminton:'badminton',tt:'tt',tennis:'overview'})[t] || 'overview'; }
-  _locView(name){ return ({'Выборгский (север)':'lounge','Невский':'reception','Красносельский':'tech','Шушары / Славянка':'lounge'})[name] || 'lounge'; }
+  _locView(name){ return ({'Выборгский (север)':'padel','Невский':'reception','Красносельский':'tt','Шушары / Славянка':'badminton'})[name] || 'overview'; }
 
   setHallView = (v)=>{
     this.setState({hallView:v});
@@ -791,7 +750,7 @@ class Component extends DCLogic {
 
     // ---------- OVERVIEW ----------
     const pillars = [
-      {k:'Мульти-формат', t:'5 падел · 4 бадминтон · 2 стола НТ — три потока спроса, одна инфраструктура', tone:C.maghot},
+      {k:'Мульти-формат', t:'4 падел · 3 бадминтон · 3 стола НТ — три потока спроса, одна инфраструктура', tone:C.maghot},
       {k:'Цифра', t:'Автоматизация процессов и «безлюдные часы» — минимум ФОТ', tone:C.mint},
       {k:'Комьюнити', t:'Турниры, рейтинги и кабинет спортсмена удерживают игроков', tone:C.org},
     ];
@@ -808,16 +767,13 @@ class Component extends DCLogic {
     const zoneList = [
       {v:'overview', t:'Здание снаружи'},
       {v:'cutaway',  t:'Разрез сверху'},
-      {v:'secondFloorTop', t:'Второй этаж'},
-      {v:'padelTop',     t:'Падел-холл'},
-      {v:'badmintonTop', t:'Бадминтон'},
-      {v:'ttTop',        t:'Наст. теннис'},
+      {v:'padelTop',     t:'Падел (4)'},
+      {v:'badmintonTop', t:'Бадминтон (3)'},
+      {v:'ttTop',        t:'Наст. теннис (3)'},
+      {v:'annexTop',     t:'Пристройка'},
       {v:'receptionTop', t:'Ресепшн'},
       {v:'shopTop',      t:'Про-шоп'},
-      {v:'loungeTop',    t:'Лаундж'},
-      {v:'gymTop',       t:'ОФП-зал'},
       {v:'lockerTop',    t:'Раздевалки'},
-      {v:'techTop',      t:'Техзона'},
     ];
     const zoneChip = (active)=>({ cursor:'pointer', fontFamily:"'Unbounded',sans-serif", fontWeight: active?500:300, fontSize:'12px', padding:'9px 14px', borderRadius:'999px', border:'1px solid '+(active?'transparent':'rgba(21,14,43,0.16)'), color: active?'#fff':'rgba(21,14,43,0.72)', background: active?'linear-gradient(135deg,#C2399F,#6C30D6)':'rgba(21,14,43,0.05)', boxShadow: active?'0 6px 18px rgba(194,57,159,0.4)':'none', backdropFilter:'blur(16px)', transition:'all 160ms' });
     const zones = zoneList.map(z=>({ v:z.v, t:z.t, onClick:()=>this.setHallView(z.v), style: zoneChip(S.hallView===z.v) }));
@@ -826,10 +782,10 @@ class Component extends DCLogic {
     const dot = (active, color)=>({ width:'8px', height:'8px', borderRadius:'50%', background: active?color:'rgba(21,14,43,0.25)', boxShadow: active?('0 0 10px '+color):'none' });
 
     const buildSpecs = [
-      {v:'2 100 м²', l:'Площадь + антресоль 250'},
-      {v:'8 м', l:'Высота потолка'},
-      {v:'60 / 40', l:'Спорт / общие зоны'},
-      {v:'30+ лет', l:'Срок службы контура'},
+      {v:'1 500 м²', l:'Зал (тент) + пристройка 300'},
+      {v:'8 / 10,6 м', l:'Стенка / конёк'},
+      {v:'2 контура', l:'Тентовая мембрана + утепл.'},
+      {v:'15–50 лет', l:'Мембрана / каркас'},
     ];
     const schemeList = ['Малина','Фиолет','Классика'];
     const schemeChip = (active)=>({ cursor:'pointer', fontFamily:"'JetBrains Mono',monospace", fontSize:'10px', letterSpacing:'0.04em', textTransform:'uppercase', padding:'7px 11px', borderRadius:'8px', border:'1px solid '+(active?'#C2399F':'rgba(21,14,43,0.16)'), color: active?'#150E2B':'rgba(21,14,43,0.6)', background: active?'rgba(194,57,159,0.25)':'rgba(21,14,43,0.04)' });
@@ -1038,70 +994,6 @@ class Component extends DCLogic {
     };
   }
 }
-</script>
-
-<script>
-(function(){
-  var CODE = '7727';
-  var lock = document.getElementById('nb-lock');
-  var dots = document.querySelectorAll('#nb-pin-dots .nb-dot');
-  var err  = document.getElementById('nb-pin-err');
-  var pin  = '';
-
-  if (sessionStorage.getItem('nb-unlocked') === '1') { lock.classList.add('nb-unlocked'); return; }
-
-  function updateDots() {
-    dots.forEach(function(d, i){ d.classList.toggle('on', i < pin.length); });
-  }
-
-  function shake() {
-    var el = document.getElementById('nb-pin-dots');
-    el.classList.remove('nb-shake');
-    void el.offsetWidth;
-    el.classList.add('nb-shake');
-    err.style.opacity = '1';
-    setTimeout(function(){ err.style.opacity = '0'; }, 1400);
-  }
-
-  function tryUnlock() {
-    if (pin === CODE) {
-      sessionStorage.setItem('nb-unlocked', '1');
-      lock.classList.add('nb-unlocked');
-    } else {
-      shake();
-      pin = '';
-      updateDots();
-    }
-  }
-
-  document.querySelectorAll('#nb-pin-pad .nb-pin-key[data-d]').forEach(function(btn){
-    btn.addEventListener('click', function(){
-      if (pin.length >= 4) return;
-      pin += btn.getAttribute('data-d');
-      updateDots();
-      if (pin.length === 4) setTimeout(tryUnlock, 80);
-    });
-  });
-
-  document.getElementById('nb-pin-del').addEventListener('click', function(){
-    pin = pin.slice(0, -1);
-    updateDots();
-    err.style.opacity = '0';
-  });
-
-  document.addEventListener('keydown', function(e){
-    if (lock.classList.contains('nb-unlocked')) return;
-    if (e.key >= '0' && e.key <= '9' && pin.length < 4) {
-      pin += e.key;
-      updateDots();
-      if (pin.length === 4) setTimeout(tryUnlock, 80);
-    } else if (e.key === 'Backspace') {
-      pin = pin.slice(0, -1);
-      updateDots();
-      err.style.opacity = '0';
-    }
-  });
-})();
 </script>
 
 <div id="nb-rotate" aria-hidden="true">
